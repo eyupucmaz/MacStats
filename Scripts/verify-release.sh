@@ -17,7 +17,8 @@ die() {
 [ "$#" -ge 1 ] && [ "$#" -le 2 ] || usage
 VERSION="$1"
 EXPECTED_BUILD="${2:-1}"
-[[ "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || usage
+SEMVER_PATTERN='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+[[ "${VERSION}" =~ ${SEMVER_PATTERN} ]] || usage
 [[ "${EXPECTED_BUILD}" =~ ^[1-9][0-9]*$ ]] || usage
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -31,9 +32,26 @@ ATTACH_PLIST=""
 MOUNT_DEVICE=""
 MOUNT_POINT=""
 
+attached_device_from_plist() {
+    local entity_index candidate_device
+    [ -n "${ATTACH_PLIST}" ] && [ -f "${ATTACH_PLIST}" ] || return 1
+
+    for entity_index in {0..63}; do
+        candidate_device="$(/usr/libexec/PlistBuddy -c "Print :system-entities:${entity_index}:dev-entry" "${ATTACH_PLIST}" 2>/dev/null || true)"
+        if [ -n "${candidate_device}" ]; then
+            printf '%s\n' "${candidate_device}"
+            return 0
+        fi
+    done
+    return 1
+}
+
 cleanup() {
     local status=$?
     trap - EXIT INT TERM
+    if [ -z "${MOUNT_DEVICE}" ]; then
+        MOUNT_DEVICE="$(attached_device_from_plist || true)"
+    fi
     if [ -n "${MOUNT_DEVICE}" ]; then
         hdiutil detach "${MOUNT_DEVICE}" >/dev/null 2>&1 || true
     fi
@@ -43,7 +61,9 @@ cleanup() {
     exit "${status}"
 }
 
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 [ -f "${DMG_PATH}" ] || die "DMG not found: ${DMG_PATH}"
 [ -f "${CHECKSUM_PATH}" ] || die "checksum not found: ${CHECKSUM_PATH}"
@@ -61,14 +81,12 @@ fi
 
 ATTACH_PLIST="$(mktemp -t macstats-dmg-attach)"
 hdiutil attach -readonly -nobrowse -plist "${DMG_PATH}" > "${ATTACH_PLIST}"
+MOUNT_DEVICE="$(attached_device_from_plist)" || die "mounted image did not report a device entry"
 
 for entity_index in {0..63}; do
     candidate_mount_point="$(/usr/libexec/PlistBuddy -c "Print :system-entities:${entity_index}:mount-point" "${ATTACH_PLIST}" 2>/dev/null || true)"
     [ -n "${candidate_mount_point}" ] || continue
-    candidate_device="$(/usr/libexec/PlistBuddy -c "Print :system-entities:${entity_index}:dev-entry" "${ATTACH_PLIST}" 2>/dev/null || true)"
-    [ -n "${candidate_device}" ] || die "mounted image did not report a device entry"
     MOUNT_POINT="${candidate_mount_point}"
-    MOUNT_DEVICE="${candidate_device}"
     break
 done
 

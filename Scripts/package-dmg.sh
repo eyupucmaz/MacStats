@@ -11,7 +11,8 @@ usage() {
 
 [ "$#" -eq 1 ] || usage
 VERSION="$1"
-[[ "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || usage
+SEMVER_PATTERN='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+[[ "${VERSION}" =~ ${SEMVER_PATTERN} ]] || usage
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="${REPO_ROOT}/dist"
