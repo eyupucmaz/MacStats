@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test (${{ matrix.runner }})
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Check monitoring-only constraints
+        run: bash Scripts/check-monitoring-only.sh
+      - name: Validate shell scripts
+        run: bash -n Scripts/*.sh
+      - name: Run Swift tests
+        run: swift test
+
+  package-universal:
+    name: Package Universal App
+    needs: test
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Build Universal app
+        run: APP_VERSION=0.1.0 BUILD_NUMBER="${GITHUB_RUN_NUMBER}" RELEASE_STRICT=1 bash Scripts/build-app.sh
+      - name: Verify Universal app
+        run: bash Scripts/verify-app.sh dist/MacStats.app 0.1.0 "${GITHUB_RUN_NUMBER}"
+      - name: Upload Universal app diagnostic
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: MacStats-universal-app
+          path: dist/MacStats.app
+          if-no-files-found: error
+          retention-days: 7
