@@ -1,0 +1,21 @@
+# SwiftPM
+.build/
+.swiftpm/
+Package.resolved
+
+# Packaging output
+dist/
+*.dmg
+
+# Isolated development worktrees
+.worktrees/
+
+# Xcode
+*.xcuserdatad
+xcuserdata/
+*.xcodeproj
+*.xcworkspace
+DerivedData/
+
+# macOS
+.DS_Store
