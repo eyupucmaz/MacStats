@@ -1,0 +1,64 @@
+name: Bug report
+description: Report an unexpected MacStats behavior.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Do not include passwords, tokens, serial
+        numbers, personal paths, or other sensitive information in logs.
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version
+      description: Include the macOS release and build, if known.
+      placeholder: "macOS 15.0 (24A335)"
+    validations:
+      required: true
+  - type: input
+    id: mac-model-architecture
+    attributes:
+      label: Mac model and architecture
+      description: For example, MacBookPro18,3 (arm64).
+      placeholder: "MacBookPro18,3 (arm64)"
+    validations:
+      required: true
+  - type: input
+    id: macstats-version
+    attributes:
+      label: MacStats version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: textarea
+    id: observed-behavior
+    attributes:
+      label: Observed behavior
+      description: Tell us what happened.
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: Tell us what you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Remove personal or sensitive information before attaching logs.
+      render: shell

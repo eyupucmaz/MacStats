@@ -1,0 +1,39 @@
+name: Feature request
+description: Suggest an improvement to MacStats. Fan-control requests remain roadmap discussions.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the outcome you need. Fan-control requests remain roadmap
+        discussions and are not commitments for the public preview.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposed-behavior
+    attributes:
+      label: Proposed behavior
+      description: Describe the behavior you would expect.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What alternatives or workarounds have you considered?
+    validations:
+      required: true
+  - type: textarea
+    id: hardware-impact
+    attributes:
+      label: Hardware impact
+      description: Which Mac models, architectures, sensors, or hardware constraints matter?
+    validations:
+      required: true

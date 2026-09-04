@@ -1,5 +1,10 @@
 # MacStats Design Specification
 
+> **Historical status — not a release specification.** The approved
+> [2026-09-04 public-preview release design](2026-09-04-public-preview-release-design.md)
+> defines the release requirements for v0.1.0. The fan-control portions of this
+> earlier design are historical and are not release requirements.
+
 **Date:** 2026-09-03  
 **Status:** Approved for Implementation  
 **Author:** AI Assistant
