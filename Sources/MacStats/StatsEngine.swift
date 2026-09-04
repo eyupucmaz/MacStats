@@ -88,7 +88,7 @@ final class StatsEngine: ObservableObject {
 
     /// Restarts the timer with a new period, clamped to 0.5...60 seconds.
     func setUpdateInterval(_ seconds: Double) {
-        let clamped = min(max(seconds, 0.5), 60.0)
+        let clamped = Self.normalizedUpdateInterval(seconds)
         lock.lock()
         defer { lock.unlock() }
         updateInterval = clamped
@@ -96,6 +96,11 @@ final class StatsEngine: ObservableObject {
         timer?.cancel()
         timer = nil
         startTimerLocked()
+    }
+
+    static func normalizedUpdateInterval(_ seconds: Double) -> Double {
+        guard seconds.isFinite else { return 1.0 }
+        return min(max(seconds, 0.5), 60.0)
     }
 
     /// Caller must hold `lock`.

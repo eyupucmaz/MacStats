@@ -134,6 +134,18 @@ final class StatsEngineTests: XCTestCase {
 
     // MARK: - Update interval
 
+    func testNormalizedUpdateIntervalUsesOneSecondForNonFiniteInput() {
+        XCTAssertEqual(StatsEngine.normalizedUpdateInterval(.nan), 1.0)
+        XCTAssertEqual(StatsEngine.normalizedUpdateInterval(.infinity), 1.0)
+        XCTAssertEqual(StatsEngine.normalizedUpdateInterval(-.infinity), 1.0)
+    }
+
+    func testNormalizedUpdateIntervalClampsFiniteInput() {
+        XCTAssertEqual(StatsEngine.normalizedUpdateInterval(-100), 0.5)
+        XCTAssertEqual(StatsEngine.normalizedUpdateInterval(10), 10)
+        XCTAssertEqual(StatsEngine.normalizedUpdateInterval(1e9), 60)
+    }
+
     func testSetUpdateIntervalAcceptsOutOfRangeValuesWithoutBreakingSampling() {
         let engine = self.engine
         for interval in [-100.0, -1.0, 0.0, 0.0001, 1e9, Double.greatestFiniteMagnitude] {
