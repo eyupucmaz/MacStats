@@ -28,7 +28,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Apply the persisted interval before the first tick.
         StatsEngine.shared.setUpdateInterval(AppSettings.shared.updateInterval)
         StatsEngine.shared.start()
-        FanController.shared.refresh()
         observeStats()
 
         // Let one warm-up window elapse so deltas have a baseline, then idle down
@@ -47,8 +46,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard !hasTornDown else { return }
         hasTornDown = true
         StatsEngine.shared.stop()
-        // Never leave the machine with an overridden fan curve.
-        FanController.shared.restoreAutomaticControl()
     }
 
     // MARK: - Status item
@@ -118,7 +115,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onShowMenu: { [weak self] view in self?.showStatusMenu(anchoredTo: view) }
         )
         .environmentObject(StatsEngine.shared)
-        .environmentObject(FanController.shared)
 
         let controller = NSHostingController(rootView: statsView)
         // Let SwiftUI drive the popover size so hidden cards do not leave a gap.
@@ -208,7 +204,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if settingsWindow == nil {
             let view = SettingsView(onDone: { [weak self] in self?.settingsWindow?.performClose(nil) })
                 .environmentObject(StatsEngine.shared)
-                .environmentObject(FanController.shared)
 
             let window = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 420, height: 520),

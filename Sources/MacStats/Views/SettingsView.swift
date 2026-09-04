@@ -3,7 +3,6 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject var stats: StatsEngine
-    @EnvironmentObject var fan: FanController
     @ObservedObject private var settings = AppSettings.shared
 
     /// Closes the hosting `NSWindow`; `@Environment(\.dismiss)` does nothing here.
@@ -80,19 +79,6 @@ struct SettingsView: View {
                     }
                 }
 
-                Section("Fan Control") {
-                    Label(fanStatusText, systemImage: fan.isControlAvailable ? "fanblades" : "exclamationmark.triangle")
-                        .font(.caption)
-                        .foregroundStyle(fan.isControlAvailable ? .primary : .secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if let error = fan.lastError {
-                        Text(error)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-
                 Section("About") {
                     LabeledContent("MacStats", value: "Version \(Self.versionString)")
                     Text("Menu bar system monitor.")
@@ -114,18 +100,7 @@ struct SettingsView: View {
         .frame(minWidth: 380, minHeight: 480)
         .onAppear {
             settings.refreshLaunchAtLoginState()
-            fan.refresh()
         }
-    }
-
-    private var fanStatusText: String {
-        if fan.isControlAvailable {
-            return "Fan control is available. Auto mode returns control to macOS."
-        }
-        if !fan.isFanPresent {
-            return "No controllable fan was found on this Mac."
-        }
-        return "Fan control is unavailable; readings only."
     }
 
     static var versionString: String {
@@ -144,5 +119,4 @@ struct SettingsView: View {
 #Preview {
     SettingsView()
         .environmentObject(StatsEngine.shared)
-        .environmentObject(FanController.shared)
 }

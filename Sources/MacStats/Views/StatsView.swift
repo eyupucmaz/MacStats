@@ -3,7 +3,6 @@ import SwiftUI
 
 struct StatsView: View {
     @EnvironmentObject var stats: StatsEngine
-    @EnvironmentObject var fan: FanController
     @ObservedObject private var settings = AppSettings.shared
 
     /// Injected by `AppDelegate` so the popover can drive real AppKit windows/menus.
@@ -32,14 +31,9 @@ struct StatsView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 8)
             }
-
-            Divider()
-
-            fanControl
         }
         .padding(12)
         .frame(width: 320)
-        .onAppear { fan.refresh() }
     }
 
     // MARK: - Header
@@ -133,72 +127,6 @@ struct StatsView: View {
                                             : "Temperature not available"))
         }
         return result
-    }
-
-    // MARK: - Fan control
-
-    private var fanControl: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Fan Control")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Text(fan.isFanPresent ? "\(fan.currentFanSpeed) RPM" : Self.unavailable)
-                    .font(.caption)
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel(fan.isFanPresent
-                                        ? "Measured fan speed \(fan.currentFanSpeed) RPM"
-                                        : "Fan speed unavailable")
-            }
-
-            Picker("Mode", selection: fanModeBinding) {
-                ForEach(FanController.FanMode.allCases) { mode in
-                    Text(mode.rawValue).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .disabled(!fan.isControlAvailable)
-            .accessibilityLabel("Fan mode")
-
-            if fan.fanMode == .custom {
-                HStack {
-                    Text("Speed: \(fan.customSpeed) RPM")
-                        .font(.caption)
-                        .monospacedDigit()
-                    Spacer()
-                    Stepper("", value: customSpeedBinding, in: fan.minSpeed...fan.maxSpeed, step: 100)
-                        .labelsHidden()
-                        .disabled(!fan.isControlAvailable)
-                        .accessibilityLabel("Custom fan speed")
-                }
-            }
-
-            if !fan.isControlAvailable {
-                Label(fan.lastError ?? "Fan control is not available on this Mac.",
-                      systemImage: "exclamationmark.triangle")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            } else if let error = fan.lastError {
-                Label(error, systemImage: "exclamationmark.triangle")
-                    .font(.caption2)
-                    .foregroundStyle(.orange)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .padding(.top, 4)
-    }
-
-    /// `fanMode` is `private(set)`, so every mutation has to go through `setFanMode(_:)`.
-    private var fanModeBinding: Binding<FanController.FanMode> {
-        Binding(get: { fan.fanMode }, set: { fan.setFanMode($0) })
-    }
-
-    private var customSpeedBinding: Binding<Int> {
-        Binding(get: { fan.customSpeed }, set: { fan.setCustomSpeed($0) })
     }
 
     // MARK: - Formatting
@@ -334,5 +262,4 @@ private struct MenuAnchorButton: NSViewRepresentable {
 #Preview {
     StatsView()
         .environmentObject(StatsEngine.shared)
-        .environmentObject(FanController.shared)
 }

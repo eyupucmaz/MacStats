@@ -4,16 +4,15 @@ import IOKit
 /// Minimal, fail-soft wrapper around the `AppleSMC` kernel service.
 ///
 /// Every entry point degrades gracefully: when the service cannot be opened, a
-/// key does not exist or the SMC rejects a request, reads return `nil`/`0` and
-/// writes return `false`. Nothing here traps.
+/// key does not exist or the SMC rejects a request, reads return `nil`/`0`.
+/// Nothing here traps.
 ///
 /// Keys used by this file:
 ///   `FNum`   fan count                                          (ui8)
 ///   `F<n>Ac` fan n actual RPM                                    (flt / fpe2)
 ///   `F<n>Mn` fan n minimum RPM                                   (flt / fpe2)
 ///   `F<n>Mx` fan n maximum RPM                                   (flt / fpe2)
-///   `F<n>Md` fan n manual override flag: 0 = SMC/auto, 1 = manual (ui8)
-///   `F<n>Tg` fan n target RPM, honoured only while `F<n>Md` == 1 (flt / fpe2)
+///   `F<n>Tg` fan n target RPM diagnostic                           (flt / fpe2)
 ///   `Tp09` `Tp0T` `Tp01` `Tp05` `Tp0D` `Tp0H` `Tg0f` `Tg0j`
 ///           Apple Silicon CPU/SoC die sensors                    (flt, °C)
 ///   `TC0P` `TC0D` `TCAD` Intel-era CPU proximity/die sensors      (sp78, °C)
@@ -27,7 +26,6 @@ final class SMCService: @unchecked Sendable {
     private static let selectorHandleYPCEvent: UInt32 = 2
 
     private static let cmdReadBytes: UInt8 = 5
-    private static let cmdWriteBytes: UInt8 = 6
     private static let cmdReadIndex: UInt8 = 8
     private static let cmdReadKeyInfo: UInt8 = 9
 
@@ -106,9 +104,6 @@ final class SMCService: @unchecked Sendable {
     private var cachedFanCount: Int?
     private var cachedTemperatureKey: String?
     private var temperatureProbed = false
-
-    /// Human-readable reason the most recent write failed, if any.
-    private(set) var lastWriteError: String?
 
     /// `IOReturn` of the most recent kernel round trip; diagnostics only.
     private(set) var lastKernelStatus: kern_return_t = KERN_SUCCESS
@@ -258,52 +253,6 @@ final class SMCService: @unchecked Sendable {
     /// Numeric value of any key, decoded according to its SMC data type.
     func readValue(_ key: String) -> Double? { readDouble(key) }
 
-    // MARK: - Public writes
-
-    /// The manual-override key for a fan: Intel spells it `F<n>Md`, Apple
-    /// Silicon spells it `F<n>md`. Returns `nil` when neither exists.
-    func manualModeKey(index: Int = 0) -> String? {
-        for key in ["F\(index)Md", "F\(index)md"] where hasKey(key) { return key }
-        return nil
-    }
-
-    /// Switches fan `index` to manual control (`F<n>Md` = 1) and programs
-    /// `F<n>Tg`. Returns `false` — with `lastWriteError` set — when the SMC
-    /// refuses, which is the normal outcome without root and on Apple Silicon.
-    func writeFanTarget(_ rpm: Int, index: Int = 0) -> Bool {
-        guard opened else {
-            setWriteError("The SMC could not be opened on this Mac")
-            return false
-        }
-        guard rpm >= 0 else {
-            setWriteError("Refusing to write a negative fan target")
-            return false
-        }
-        guard let modeKey = manualModeKey(index: index) else {
-            setWriteError("This Mac exposes no fan manual-override key (F\(index)Md/F\(index)md)")
-            return false
-        }
-        guard write(modeKey, value: 1) else { return false }
-        guard write("F\(index)Tg", value: Double(rpm)) else { return false }
-        setWriteError(nil)
-        return true
-    }
-
-    /// Hands fan `index` back to the SMC's own control (`F<n>Md` = 0).
-    func restoreAutoFanControl(index: Int = 0) -> Bool {
-        guard opened else {
-            setWriteError("The SMC could not be opened on this Mac")
-            return false
-        }
-        guard let modeKey = manualModeKey(index: index) else {
-            setWriteError("This Mac exposes no fan manual-override key (F\(index)Md/F\(index)md)")
-            return false
-        }
-        guard write(modeKey, value: 0) else { return false }
-        setWriteError(nil)
-        return true
-    }
-
     // MARK: - Key access
 
     private func readDouble(_ key: String) -> Double? {
@@ -323,34 +272,6 @@ final class SMCService: @unchecked Sendable {
 
         guard let output = call(&input), output.result == 0 else { return nil }
         return (info.dataType, Self.array(from: output.bytes, count: Int(info.dataSize)))
-    }
-
-    private func write(_ key: String, value: Double) -> Bool {
-        let code = Self.fourCharCode(key)
-        guard let info = keyInfo(for: code) else {
-            setWriteError("This Mac has no SMC key \(key)")
-            return false
-        }
-        guard let payload = Self.encode(value, type: info.dataType, size: Int(info.dataSize)) else {
-            setWriteError("Unsupported SMC data type for \(key)")
-            return false
-        }
-
-        var input = SMCKeyData()
-        input.key = code
-        input.keyInfo.dataSize = info.dataSize
-        input.data8 = Self.cmdWriteBytes
-        input.bytes = Self.tuple(from: payload)
-
-        guard let output = call(&input) else {
-            setWriteError("The SMC rejected the write to \(key): \(Self.describe(kernel: lastKernelStatus))")
-            return false
-        }
-        guard output.result == 0 else {
-            setWriteError("The SMC rejected the write to \(key): \(Self.describe(result: output.result))")
-            return false
-        }
-        return true
     }
 
     private func keyInfo(for code: UInt32) -> SMCKeyInfoData? {
@@ -393,13 +314,7 @@ final class SMCService: @unchecked Sendable {
         return result == kIOReturnSuccess ? output : nil
     }
 
-    private func setWriteError(_ message: String?) {
-        lock.lock()
-        lastWriteError = message
-        lock.unlock()
-    }
-
-    // MARK: - Encoding / decoding
+    // MARK: - Decoding
 
     /// CPU-die candidates, most specific first.
     /// `Tp09`/`Tp0T`/… are the M1–M3 core-cluster names; `Tp00`/`Tp04`/… are
@@ -463,42 +378,6 @@ final class SMCService: @unchecked Sendable {
         }
     }
 
-    /// Encodes a value back into the key's own data type for a write.
-    static func encode(_ value: Double, type: UInt32, size: Int) -> [UInt8]? {
-        guard size > 0, size <= 32 else { return nil }
-        let name = string(fromFourCharCode: type)
-        var payload = [UInt8](repeating: 0, count: size)
-
-        switch name {
-        case "flt ":
-            guard size >= 4 else { return nil }
-            let raw = Float(value).bitPattern
-            payload[0] = UInt8(raw & 0xFF)
-            payload[1] = UInt8((raw >> 8) & 0xFF)
-            payload[2] = UInt8((raw >> 16) & 0xFF)
-            payload[3] = UInt8((raw >> 24) & 0xFF)
-            return payload
-        case "ui8 ", "ui16", "ui32", "hex_", "char":
-            return bigEndianPayload(UInt64(max(0, value).rounded()), size: size)
-        default:
-            let chars = Array(name)
-            guard chars.count == 4, chars[1] == "p",
-                  let fractionBits = chars[3].hexDigitValue,
-                  chars[0] == "f" || chars[0] == "s" else { return nil }
-            let scaled = (value * Double(1 << fractionBits)).rounded()
-            guard scaled >= 0 else { return nil }
-            return bigEndianPayload(UInt64(scaled), size: size)
-        }
-    }
-
-    private static func bigEndianPayload(_ value: UInt64, size: Int) -> [UInt8] {
-        var payload = [UInt8](repeating: 0, count: size)
-        for index in 0..<min(size, 8) {
-            payload[size - 1 - index] = UInt8((value >> (8 * index)) & 0xFF)
-        }
-        return payload
-    }
-
     private static func unsignedBigEndian(_ bytes: [UInt8]) -> UInt64 {
         var value: UInt64 = 0
         for byte in bytes.prefix(8) { value = (value << 8) | UInt64(byte) }
@@ -557,21 +436,13 @@ final class SMCService: @unchecked Sendable {
         }
     }
 
-    // MARK: - Tuple <-> array
+    // MARK: - Byte conversion
 
     private static func array(from bytes: SMCBytes, count: Int) -> [UInt8] {
         var copy = bytes
         return withUnsafeBytes(of: &copy) { raw in
             (0..<min(max(count, 0), 32)).map { raw[$0] }
         }
-    }
-
-    private static func tuple(from array: [UInt8]) -> SMCBytes {
-        var bytes = emptyBytes
-        withUnsafeMutableBytes(of: &bytes) { raw in
-            for (index, byte) in array.prefix(32).enumerated() { raw[index] = byte }
-        }
-        return bytes
     }
 
     /// Byte size of `SMCKeyData_t` as Swift lays it out — 80 on a correct build.
