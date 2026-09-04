@@ -2,8 +2,11 @@
 
 SWIFT ?= swift
 APP_BUNDLE := dist/MacStats.app
+VERSION ?= 0.1.0
+BUILD_NUMBER ?= 1
+DMG := dist/MacStats-$(VERSION)-universal.dmg
 
-.PHONY: all build release app icon test run clean help
+.PHONY: all build release app verify-app icon test run clean help
 
 all: build
 
@@ -23,7 +26,10 @@ release:
 	$(SWIFT) build -c release
 
 app:
-	bash Scripts/build-app.sh
+	APP_VERSION=$(VERSION) BUILD_NUMBER=$(BUILD_NUMBER) RELEASE_STRICT=1 bash Scripts/build-app.sh
+
+verify-app:
+	bash Scripts/verify-app.sh dist/MacStats.app $(VERSION) $(BUILD_NUMBER)
 
 icon:
 	$(SWIFT) Scripts/make-icon.swift Sources/MacStats/Resources/Assets.xcassets/AppIcon.appiconset

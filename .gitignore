@@ -3,7 +3,7 @@
 .swiftpm/
 Package.resolved
 
-# Packaging output
+# Generated release packaging output (Universal app bundle and DMG)
 dist/
 *.dmg
 
