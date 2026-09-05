@@ -22,14 +22,18 @@ die() { printf '\033[1;31merror:\033[0m %s\n' "$*" >&2; exit 1; }
 
 cd "${REPO_ROOT}"
 
-APP_VERSION="${APP_VERSION:-$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Info.plist)}"
+SOURCE_APP_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Info.plist)" \
+    || die "could not read CFBundleShortVersionString from source Info.plist"
+APP_VERSION="${APP_VERSION:-${SOURCE_APP_VERSION}}"
 BUILD_NUMBER="${BUILD_NUMBER:-$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' Info.plist)}"
 ARCHS="${ARCHS:-arm64 x86_64}"
 RELEASE_STRICT="${RELEASE_STRICT:-0}"
 CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY:--}"
 CODE_SIGN_TIMESTAMP="${CODE_SIGN_TIMESTAMP:-none}"
 
-[[ "${APP_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "APP_VERSION must use MAJOR.MINOR.PATCH format"
+SEMVER_PATTERN='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+[[ "${APP_VERSION}" =~ ${SEMVER_PATTERN} ]] \
+    || die "APP_VERSION must use MAJOR.MINOR.PATCH format without leading zeroes"
 [[ "${BUILD_NUMBER}" =~ ^[1-9][0-9]*$ ]] || die "BUILD_NUMBER must be a positive integer"
 case "${ARCHS}" in
     'arm64 x86_64'|arm64|x86_64) ;;
@@ -39,6 +43,12 @@ case "${RELEASE_STRICT}" in
     0|1) ;;
     *) die "RELEASE_STRICT must be 0 or 1" ;;
 esac
+if [ "${RELEASE_STRICT}" = 1 ]; then
+    [[ "${SOURCE_APP_VERSION}" =~ ${SEMVER_PATTERN} ]] \
+        || die "source CFBundleShortVersionString must use MAJOR.MINOR.PATCH format without leading zeroes"
+    [ "${APP_VERSION}" = "${SOURCE_APP_VERSION}" ] \
+        || die "APP_VERSION ${APP_VERSION} must exactly match source version ${SOURCE_APP_VERSION} in RELEASE_STRICT=1"
+fi
 
 # ---------------------------------------------------------------------------
 # 1. Compile and resolve the SwiftPM products.

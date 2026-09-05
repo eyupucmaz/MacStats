@@ -53,7 +53,17 @@ cleanup() {
         MOUNT_DEVICE="$(attached_device_from_plist || true)"
     fi
     if [ -n "${MOUNT_DEVICE}" ]; then
-        hdiutil detach "${MOUNT_DEVICE}" >/dev/null 2>&1 || true
+        if ! hdiutil detach "${MOUNT_DEVICE}" >/dev/null 2>&1; then
+            printf 'warning: could not detach %s normally; retrying with force\n' \
+                "${MOUNT_DEVICE}" >&2
+            if ! hdiutil detach -force "${MOUNT_DEVICE}" >/dev/null 2>&1; then
+                printf 'error: could not detach mounted image device %s\n' \
+                    "${MOUNT_DEVICE}" >&2
+                if [ "${status}" -eq 0 ]; then
+                    status=1
+                fi
+            fi
+        fi
     fi
     if [ -n "${ATTACH_PLIST}" ] && [ -f "${ATTACH_PLIST}" ]; then
         rm -f -- "${ATTACH_PLIST}"

@@ -25,7 +25,9 @@ jobs:
       - name: Check monitoring-only constraints
         run: bash Scripts/check-monitoring-only.sh
       - name: Validate shell scripts
-        run: bash -n Scripts/*.sh
+        run: for script in Scripts/*.sh; do bash -n "$script"; done
+      - name: Run release safety tests
+        run: bash Tests/ReleaseSafetyTests.sh
       - name: Run Swift tests
         run: swift test
 

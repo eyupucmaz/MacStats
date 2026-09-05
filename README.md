@@ -9,8 +9,8 @@ monitoring-only: it does not include fan control.
 
 ## Download and install
 
-Download the latest public preview from
-[GitHub Releases](https://github.com/eyupucmaz/MacStats/releases/latest). The
+Download the v0.1.0 public preview from
+[GitHub Releases](https://github.com/eyupucmaz/MacStats/releases/tag/v0.1.0). The
 v0.1.0 release assets are `MacStats-0.1.0-universal.dmg` and
 `MacStats-0.1.0-universal.dmg.sha256`.
 
@@ -50,7 +50,7 @@ Use a Swift tools 5.9-compatible toolchain on macOS 13 or later:
 swift build
 swift test
 bash Scripts/check-monitoring-only.sh
-bash -n Scripts/*.sh
+for script in Scripts/*.sh; do bash -n "$script"; done
 
 APP_VERSION=0.1.0 BUILD_NUMBER=1 RELEASE_STRICT=1 bash Scripts/build-app.sh
 bash Scripts/package-dmg.sh 0.1.0

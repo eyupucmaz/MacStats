@@ -38,7 +38,9 @@ jobs:
       - name: Check monitoring-only constraints
         run: bash Scripts/check-monitoring-only.sh
       - name: Validate shell scripts
-        run: bash -n Scripts/*.sh
+        run: for script in Scripts/*.sh; do bash -n "$script"; done
+      - name: Run release safety tests
+        run: bash Tests/ReleaseSafetyTests.sh
       - name: Run Swift tests
         run: swift test
       - name: Build Universal app
@@ -55,17 +57,51 @@ jobs:
           bash Scripts/verify-release.sh "${version}" "${GITHUB_RUN_NUMBER}"
       - name: Refuse to overwrite an existing release
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+          if ! gh api --silent "repos/${GITHUB_REPOSITORY}" >/dev/null; then
+            printf 'error: cannot authenticate to or access repository API for %s\n' "${GITHUB_REPOSITORY}" >&2
+            exit 1
+          fi
+
+          release_lookup="$(mktemp)"
+          trap 'rm -f -- "${release_lookup}"' EXIT
+          set +e
+          gh api --include "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" \
+            > "${release_lookup}" 2>&1
+          release_lookup_status=$?
+          set -e
+
+          if [ "${release_lookup_status}" -eq 0 ]; then
             printf 'error: release %s already exists; publish a new version instead\n' "${RELEASE_TAG}" >&2
             exit 1
           fi
+          if grep -Eq '^HTTP/[0-9.]+ 404([[:space:]]|$)' "${release_lookup}"; then
+            printf 'Confirmed that release %s does not exist.\n' "${RELEASE_TAG}"
+          else
+            sed 's/^/gh: /' "${release_lookup}" >&2
+            printf 'error: could not confirm that release %s is absent\n' "${RELEASE_TAG}" >&2
+            exit "${release_lookup_status}"
+          fi
       - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
+          token: ${{ github.token }}
           tag_name: ${{ env.RELEASE_TAG }}
           name: MacStats ${{ env.RELEASE_TAG }} Public Preview
           prerelease: true
           generate_release_notes: true
+          body: |
+            MacStats v0.1.0 Public Preview is monitoring-only; it reads local system metrics and does not control fans.
+
+            This build is ad-hoc signed and is not notarized. Open the DMG and drag `MacStats.app` to Applications. On first launch, use Control-click → Open, or choose Open Anyway in System Settings → Privacy & Security.
+
+            Verify the download before opening it:
+
+            ```bash
+            shasum -a 256 -c MacStats-0.1.0-universal.dmg.sha256
+            ```
+          overwrite_files: false
           fail_on_unmatched_files: true
           files: |
             dist/MacStats-*-universal.dmg

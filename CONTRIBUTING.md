@@ -15,7 +15,7 @@ Run the required local checks:
 ```bash
 swift test
 bash Scripts/check-monitoring-only.sh
-bash -n Scripts/*.sh
+for script in Scripts/*.sh; do bash -n "$script"; done
 ```
 
 Do not add product code or tests that write to SMC. The project is

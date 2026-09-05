@@ -99,7 +99,7 @@ Expected: Git reports a new branch based on `main`; all implementation commands 
 
 ```bash
 swift test
-bash -n Scripts/*.sh
+for script in Scripts/*.sh; do bash -n "$script"; done
 git status --short
 ```
 
@@ -387,7 +387,7 @@ Add `verify-app` to `.PHONY`. Ensure `.gitignore` covers `.build/`, `dist/`, `.D
 - [ ] **Step 5: Build and verify the Universal app**
 
 ```bash
-bash -n Scripts/*.sh
+for script in Scripts/*.sh; do bash -n "$script"; done
 make app VERSION=0.1.0 BUILD_NUMBER=1
 make verify-app VERSION=0.1.0 BUILD_NUMBER=1
 lipo -archs dist/MacStats.app/Contents/MacOS/MacStats
@@ -487,7 +487,7 @@ Add `dmg` and `verify-release` to `.PHONY` and help output.
 - [ ] **Step 5: Build, mount, verify, and prove cleanup**
 
 ```bash
-bash -n Scripts/*.sh
+for script in Scripts/*.sh; do bash -n "$script"; done
 make dmg VERSION=0.1.0 BUILD_NUMBER=1
 make verify-release VERSION=0.1.0 BUILD_NUMBER=1
 shasum -a 256 -c dist/MacStats-0.1.0-universal.dmg.sha256
@@ -553,7 +553,8 @@ Run, in order:
 
 ```bash
 bash Scripts/check-monitoring-only.sh
-bash -n Scripts/*.sh
+for script in Scripts/*.sh; do bash -n "$script"; done
+bash Tests/ReleaseSafetyTests.sh
 swift test
 ```
 
@@ -653,7 +654,7 @@ For `workflow_dispatch`, this deliberately refuses to create a tag from a branch
 
 ```bash
 bash Scripts/check-monitoring-only.sh
-bash -n Scripts/*.sh
+for script in Scripts/*.sh; do bash -n "$script"; done
 swift test
 ```
 
@@ -669,12 +670,11 @@ bash Scripts/verify-release.sh "${version}" "${GITHUB_RUN_NUMBER}"
 
 - [ ] **Step 5: Fail instead of overwriting an existing release**
 
-```bash
-if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
-  printf 'error: release %s already exists; publish a new version instead\n' "${RELEASE_TAG}" >&2
-  exit 1
-fi
-```
+Give the lookup step `GH_TOKEN: ${{ github.token }}`. First prove the token can
+access `repos/${GITHUB_REPOSITORY}`, then query
+`repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}` with response headers.
+Treat only a confirmed HTTP 404 as absence. An existing release, authentication
+failure, network failure, or any other API response must stop publication.
 
 - [ ] **Step 6: Publish a pre-release with exactly two assets**
 
@@ -683,10 +683,17 @@ Use the immutable release action:
 ```yaml
 - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
   with:
+    token: ${{ github.token }}
     tag_name: ${{ env.RELEASE_TAG }}
     name: MacStats ${{ env.RELEASE_TAG }} Public Preview
     prerelease: true
     generate_release_notes: true
+    body: |
+      MacStats v0.1.0 Public Preview is monitoring-only.
+      This build is ad-hoc signed and is not notarized. Drag `MacStats.app`
+      to Applications, follow the documented Gatekeeper steps, and verify
+      the downloaded checksum with `shasum -a 256 -c` before opening it.
+    overwrite_files: false
     fail_on_unmatched_files: true
     files: |
       dist/MacStats-*-universal.dmg
@@ -696,7 +703,8 @@ Use the immutable release action:
 - [ ] **Step 7: Validate workflow structure and permissions locally**
 
 ```bash
-rg -n 'contents: write|prerelease: true|generate_release_notes: true|fail_on_unmatched_files: true' .github/workflows/release.yml
+bash Tests/ReleaseSafetyTests.sh
+rg -n 'contents: write|prerelease: true|generate_release_notes: true|overwrite_files: false|fail_on_unmatched_files: true' .github/workflows/release.yml
 rg -n 'secrets\.|writeFanTarget|restoreAutoFanControl|cmdWriteBytes' .github/workflows/release.yml && exit 1 || true
 ```
 
@@ -734,7 +742,7 @@ Use concise English and include:
 
 - product summary and macOS 13+ requirement;
 - current read-only metrics, explicitly including fan RPM and temperature when hardware exposes them;
-- download link to `https://github.com/eyupucmaz/MacStats/releases/latest`;
+- download link to `https://github.com/eyupucmaz/MacStats/releases/tag/v0.1.0`;
 - DMG install steps: drag to Applications, then Control-click → Open or Privacy & Security → Open Anyway for this unnotarized preview;
 - a checksum verification example using `shasum -a 256 -c`;
 - privacy statement: local system metrics, no accounts, no telemetry, no network data upload by the app;
@@ -865,7 +873,7 @@ Use `superpowers:receiving-code-review` before applying review feedback. Re-run 
 ```bash
 git status --short
 bash Scripts/check-monitoring-only.sh
-bash -n Scripts/*.sh
+for script in Scripts/*.sh; do bash -n "$script"; done
 swift test
 make clean
 make dmg VERSION=0.1.0 BUILD_NUMBER=1
