@@ -1,5 +1,7 @@
 # MacStats
 
+[Website](https://eyupucmaz.github.io/MacStats/) · [Wiki & user guide](https://eyupucmaz.github.io/MacStats/guide.html) · [Download](https://github.com/eyupucmaz/MacStats/releases/tag/v0.1.0)
+
 MacStats is a lightweight, read-only macOS menu bar app for monitoring local
 system metrics. The v0.1.0 public preview requires macOS 13 (Ventura) or later.
 
@@ -69,4 +71,6 @@ The package command produces `dist/MacStats-0.1.0-universal.dmg` and its
 - The future privileged-helper exploration is documented in
   [docs/FAN_CONTROL.md](docs/FAN_CONTROL.md).
 
-MacStats is maintained by [Eyüp Uçmaz](https://eyupucmaz.dev).
+MacStats is maintained by [Eyüp Uçmaz](https://github.com/eyupucmaz).
+
+Visit the [MacStats website](https://eyupucmaz.github.io/MacStats/) for screenshots and the [complete user guide](https://eyupucmaz.github.io/MacStats/guide.html).
