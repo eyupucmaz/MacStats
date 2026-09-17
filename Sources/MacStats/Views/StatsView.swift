@@ -4,6 +4,7 @@ import SwiftUI
 struct StatsView: View {
     @EnvironmentObject var stats: StatsEngine
     @ObservedObject private var settings = AppSettings.shared
+    @State private var selectedTab: PopoverTab = .system
 
     /// Injected by `AppDelegate` so the popover can drive real AppKit windows/menus.
     var onOpenSettings: () -> Void = {}
@@ -12,6 +13,24 @@ struct StatsView: View {
     private static let unavailable = "—"
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Picker("MacStats section", selection: $selectedTab) {
+                Text("System").tag(PopoverTab.system)
+                Text("Audio").tag(PopoverTab.audio)
+            }
+            .pickerStyle(.segmented)
+
+            if selectedTab == .system {
+                systemContent
+            } else {
+                AudioTab()
+            }
+        }
+        .padding(12)
+        .frame(width: selectedTab == .system ? 320 : 360)
+    }
+
+    private var systemContent: some View {
         VStack(alignment: .leading, spacing: 12) {
             header
 
@@ -32,8 +51,6 @@ struct StatsView: View {
                     .padding(.vertical, 8)
             }
         }
-        .padding(12)
-        .frame(width: 320)
     }
 
     // MARK: - Header
@@ -151,6 +168,11 @@ struct StatsView: View {
             }
         }
     }
+}
+
+private enum PopoverTab: Hashable {
+    case system
+    case audio
 }
 
 struct StatCardModel: Identifiable {

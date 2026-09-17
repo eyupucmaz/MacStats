@@ -23,6 +23,7 @@ let package = Package(
                 .linkedFramework("AppKit"),
                 .linkedFramework("SwiftUI"),
                 .linkedFramework("IOKit"),
+                .linkedFramework("CoreAudio"),
                 .linkedFramework("CoreFoundation"),
             ]
         ),
