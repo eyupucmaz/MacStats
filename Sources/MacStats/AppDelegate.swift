@@ -15,6 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsWindow: NSWindow?
     private var hasTornDown = false
     private var cancellables = Set<AnyCancellable>()
+    private let audioDevices = AudioDeviceService()
     private lazy var statusMenu: NSMenu = makeStatusMenu()
 
     // MARK: - Lifecycle
@@ -115,6 +116,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onShowMenu: { [weak self] view in self?.showStatusMenu(anchoredTo: view) }
         )
         .environmentObject(StatsEngine.shared)
+        .environmentObject(audioDevices)
 
         let controller = NSHostingController(rootView: statsView)
         // Let SwiftUI drive the popover size so hidden cards do not leave a gap.
