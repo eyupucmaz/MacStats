@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hasTornDown = false
     private var cancellables = Set<AnyCancellable>()
     private let audioDevices = AudioDeviceService()
+    private let appMixer = AppMixerService()
     private lazy var statusMenu: NSMenu = makeStatusMenu()
 
     // MARK: - Lifecycle
@@ -46,6 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func tearDown() {
         guard !hasTornDown else { return }
         hasTornDown = true
+        appMixer.disable()
         StatsEngine.shared.stop()
     }
 
@@ -117,6 +119,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         .environmentObject(StatsEngine.shared)
         .environmentObject(audioDevices)
+        .environmentObject(appMixer)
 
         let controller = NSHostingController(rootView: statsView)
         // Let SwiftUI drive the popover size so hidden cards do not leave a gap.

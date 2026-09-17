@@ -3,6 +3,7 @@ import SwiftUI
 
 struct AudioTab: View {
     @EnvironmentObject private var audioDevices: AudioDeviceService
+    @EnvironmentObject private var appMixer: AppMixerService
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -10,20 +11,56 @@ struct AudioTab: View {
             Divider()
             deviceSection(title: "Input", direction: .input)
             Divider()
-            VStack(alignment: .leading, spacing: 4) {
-                Label("App Mixer", systemImage: "slider.horizontal.3")
-                    .font(.headline)
-                Text("Application mixing requires macOS 14.2 or later. Browser tabs are controlled as one browser app.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            appMixerSection
             if let error = audioDevices.errorMessage {
                 Label(error, systemImage: "exclamationmark.triangle")
                     .font(.caption)
                     .foregroundStyle(.orange)
                     .fixedSize(horizontal: false, vertical: true)
             }
+        }
+    }
+
+    private var appMixerSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("App Mixer", systemImage: "slider.horizontal.3").font(.headline)
+            Text("Browser tabs are controlled as one browser app. Mixing stays active only while enabled.")
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            if appMixer.isRunning {
+                Button("Disable App Mixer") { appMixer.disable() }
+                if appMixer.processes.isEmpty {
+                    Text("No audible applications detected.").font(.caption).foregroundStyle(.secondary)
+                } else {
+                    ForEach(appMixer.processes) { process in processRow(process) }
+                }
+            } else if appMixer.capability == .requiresMacOS142 {
+                Text("Application mixing requires macOS 14.2 or later.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                Button("Enable App Mixer") { Task { await appMixer.enable() } }
+            }
+            if let status = appMixer.statusMessage {
+                Text(status).font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func processRow(_ process: AppMixerProcess) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(process.name).lineLimit(1)
+                Spacer()
+                Toggle("Mute", isOn: Binding(
+                    get: { process.muted },
+                    set: { appMixer.setMuted($0, for: process.processID) }
+                )).labelsHidden()
+            }
+            Slider(value: Binding(
+                get: { Double(process.gain) },
+                set: { appMixer.setGain(Float($0), for: process.processID) }
+            ), in: 0...1)
         }
     }
 
