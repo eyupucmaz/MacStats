@@ -6,61 +6,117 @@ struct NetworkSample {
     let upBytesPerSecond: Double
 }
 
-/// Network throughput from getifaddrs(): if_data.ifi_ibytes / ifi_obytes summed over every
-/// up, non-loopback AF_LINK interface, differentiated over a monotonic clock. Limitation:
-/// ifi_*bytes are 32-bit on macOS and wrap at 4 GiB, so a decreasing total is reported as
-/// zero traffic for that tick rather than a bogus spike.
+/// Cumulative byte counters of one interface.
+struct InterfaceCounters: Equatable {
+    let name: String
+    let inputBytes: UInt64
+    let outputBytes: UInt64
+}
+
+/// Network throughput from sysctl(NET_RT_IFLIST2): the 64-bit if_data64 counters of each
+/// interface, differenced per interface over a monotonic clock. getifaddrs()' if_data is
+/// only 32 bits and wraps every 4 GiB, so it is not used.
+///
+/// Only physical links are counted — see `countsTraffic(of:)`. Tunnels, bridges and
+/// peer-to-peer links carry traffic that also crosses a physical interface, so adding
+/// them would double-count it (a VPN would show twice the real rate).
 final class NetworkMetrics {
 
-    private var previousIn: UInt64?
-    private var previousOut: UInt64?
+    private let readCounters: () -> [InterfaceCounters]?
+    private let now: () -> UInt64
+    private var previous: [String: InterfaceCounters]?
     private var previousTime: UInt64 = 0
 
-    /// Returns nil on the first call, when no elapsed time has passed, or on failure.
+    /// `readCounters` and `now` (nanoseconds, monotonic) are injectable for tests.
+    init(readCounters: @escaping () -> [InterfaceCounters]? = NetworkMetrics.readInterfaceCounters,
+         now: @escaping () -> UInt64 = { DispatchTime.now().uptimeNanoseconds }) {
+        self.readCounters = readCounters
+        self.now = now
+    }
+
+    /// The counting rule: Ethernet, Wi-Fi, USB/Thunderbolt adapters and tethering all
+    /// appear as `en*`; cellular as `pdp_ip*`. Everything else — lo, utun/ipsec/ppp/tun/tap
+    /// (VPNs), bridge, awdl/llw (AirDrop), ap (hotspot), anpi, gif/stf, vmenet (VMs) —
+    /// is either local or a second view of traffic already counted on a physical link.
+    static func countsTraffic(of interface: String) -> Bool {
+        interface.hasPrefix("en") || interface.hasPrefix("pdp_ip")
+    }
+
+    /// Returns nil on the first call, when no time has elapsed, or on failure.
     func sample() -> NetworkSample? {
-        guard let totals = readTotals() else { return nil }
-        let now = DispatchTime.now().uptimeNanoseconds
+        guard let counters = readCounters() else { return nil }
+        let time = now()
+        let current = Dictionary(counters.filter { Self.countsTraffic(of: $0.name) }.map { ($0.name, $0) },
+                                 uniquingKeysWith: { first, _ in first })
 
         defer {
-            previousIn = totals.input
-            previousOut = totals.output
-            previousTime = now
+            previous = current
+            previousTime = time
         }
-        guard let lastIn = previousIn, let lastOut = previousOut, now > previousTime else { return nil }
+        guard let last = previous, time > previousTime else { return nil }
 
-        let elapsed = Double(now - previousTime) / 1_000_000_000
-        guard elapsed > 0 else { return nil }
-        let inDelta = totals.input >= lastIn ? totals.input - lastIn : 0
-        let outDelta = totals.output >= lastOut ? totals.output - lastOut : 0
-        return NetworkSample(downBytesPerSecond: Double(inDelta) / elapsed,
-                             upBytesPerSecond: Double(outDelta) / elapsed)
+        let elapsed = Double(time - previousTime) / 1_000_000_000
+        let delta = Self.delta(from: last, to: current)
+        return NetworkSample(downBytesPerSecond: Double(delta.input) / elapsed,
+                             upBytesPerSecond: Double(delta.output) / elapsed)
     }
 
     func reset() {
-        previousIn = nil
-        previousOut = nil
+        previous = nil
         previousTime = 0
     }
 
-    private func readTotals() -> (input: UInt64, output: UInt64)? {
-        var head: UnsafeMutablePointer<ifaddrs>?
-        guard getifaddrs(&head) == 0, let first = head else { return nil }
-        defer { freeifaddrs(head) }
-
+    /// Bytes moved between two readings, summed over interfaces present in both. A counter
+    /// that went backwards means the interface was re-created (e.g. an adapter replugged)
+    /// and contributes nothing this tick, without zeroing the other interfaces.
+    static func delta(from previous: [String: InterfaceCounters],
+                      to current: [String: InterfaceCounters]) -> (input: UInt64, output: UInt64) {
         var input: UInt64 = 0
         var output: UInt64 = 0
-        var cursor: UnsafeMutablePointer<ifaddrs>? = first
-        while let entry = cursor {
-            cursor = entry.pointee.ifa_next
-
-            guard let addr = entry.pointee.ifa_addr, addr.pointee.sa_family == UInt8(AF_LINK) else { continue }
-            let flags = Int32(entry.pointee.ifa_flags)
-            guard flags & IFF_UP != 0, flags & IFF_LOOPBACK == 0 else { continue }
-            guard let data = entry.pointee.ifa_data?.assumingMemoryBound(to: if_data.self) else { continue }
-
-            input &+= UInt64(data.pointee.ifi_ibytes)
-            output &+= UInt64(data.pointee.ifi_obytes)
+        for (name, now) in current {
+            guard let before = previous[name] else { continue }
+            if now.inputBytes >= before.inputBytes { input &+= now.inputBytes - before.inputBytes }
+            if now.outputBytes >= before.outputBytes { output &+= now.outputBytes - before.outputBytes }
         }
         return (input, output)
+    }
+
+    /// Every interface's counters, unfiltered.
+    static func readInterfaceCounters() -> [InterfaceCounters]? {
+        var mib: [Int32] = [CTL_NET, PF_ROUTE, 0, 0, NET_RT_IFLIST2, 0]
+        var length = 0
+        guard sysctl(&mib, u_int(mib.count), nil, &length, nil, 0) == 0, length > 0 else { return nil }
+        // Headroom in case an interface appears between the size query and the read.
+        length += length / 8
+        var buffer = [UInt8](repeating: 0, count: length)
+        guard sysctl(&mib, u_int(mib.count), &buffer, &length, nil, 0) == 0 else { return nil }
+
+        return buffer.withUnsafeBytes { raw -> [InterfaceCounters] in
+            var result: [InterfaceCounters] = []
+            var offset = 0
+            let headerSize = MemoryLayout<if_msghdr2>.size
+            let nameOffset = MemoryLayout<sockaddr_dl>.offset(of: \sockaddr_dl.sdl_data) ?? 8
+            while offset + MemoryLayout<if_msghdr>.size <= length {
+                let header = raw.loadUnaligned(fromByteOffset: offset, as: if_msghdr.self)
+                let messageLength = Int(header.ifm_msglen)
+                guard messageLength > 0 else { break }
+                defer { offset += messageLength }
+
+                // RTM_IFINFO2 is one per interface, followed by its link-level sockaddr_dl.
+                guard Int32(header.ifm_type) == RTM_IFINFO2,
+                      messageLength >= headerSize + MemoryLayout<sockaddr_dl>.size,
+                      offset + messageLength <= length else { continue }
+                let message = raw.loadUnaligned(fromByteOffset: offset, as: if_msghdr2.self)
+                let link = raw.loadUnaligned(fromByteOffset: offset + headerSize, as: sockaddr_dl.self)
+                let nameStart = offset + headerSize + nameOffset
+                let nameEnd = nameStart + Int(link.sdl_nlen)
+                guard nameEnd <= offset + messageLength else { continue }
+
+                result.append(InterfaceCounters(name: String(decoding: raw[nameStart ..< nameEnd], as: UTF8.self),
+                                                inputBytes: message.ifm_data.ifi_ibytes,
+                                                outputBytes: message.ifm_data.ifi_obytes))
+            }
+            return result
+        }
     }
 }
