@@ -49,7 +49,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if Onboarding.shared.consumeAutoOpen() {
             DispatchQueue.main.asyncAfter(deadline: .now() + Self.onboardingDelaySeconds) { [weak self] in
                 guard self?.popover?.isShown == false else { return }
-                self?.togglePopover()
+                self?.showPopover(from: .onboarding)
             }
         }
     }
@@ -156,20 +156,54 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func togglePopover() {
-        guard let popover, let button = statusItem?.button else { return }
+        guard let popover else { return }
         if popover.isShown {
             popover.close()
         } else {
-            applyPollingPolicy(popoverShown: true)
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .maxY)
-            popover.contentViewController?.view.window?.makeKey()
+            showPopover(from: .statusItem)
         }
+    }
+
+    /// Opens the popover on the route `trigger` calls for. Order matters: the
+    /// route is set after any earlier close (whose `popoverDidClose` returns to
+    /// the grid) and before `show`, so the first frame is already the page.
+    /// Already open, it just navigates.
+    private func showPopover(from trigger: PopoverOpenTrigger) {
+        guard let popover, let button = statusItem?.button else { return }
+        let route = DetailNavigation.initialRoute(
+            for: trigger,
+            menuBarMetrics: AppSettings.shared.menuBarMetrics,
+            opensSingleMetricDetails: AppSettings.shared.opensSingleMetricDetails
+        )
+
+        if case .detail(let metric) = route {
+            // Set directly: `StatsView` reports tab changes, but not while hidden.
+            selectedTab = .system
+            if popover.isShown {
+                withAnimation(DetailNavigation.animation) { detailNavigation.show(metric) }
+            } else {
+                detailNavigation.show(metric)
+            }
+        }
+        guard !popover.isShown else { return }
+
+        applyPollingPolicy(popoverShown: true)
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .maxY)
+        popover.contentViewController?.view.window?.makeKey()
+    }
+
+    @objc private func openDetails(_ sender: NSMenuItem) {
+        guard let metric = sender.representedObject as? MenuBarMetric else { return }
+        showPopover(from: .detailsMenu(metric))
     }
 
     // MARK: - Menu
 
     private func makeStatusMenu() -> NSMenu {
         let menu = NSMenu()
+
+        menu.addItem(makeDetailsMenuItem())
+        menu.addItem(.separator())
 
         let settings = NSMenuItem(title: L10n.string("Settings…"), action: #selector(openSettings), keyEquivalent: ",")
         settings.keyEquivalentModifierMask = [.command]
@@ -188,6 +222,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(quit)
 
         return menu
+    }
+
+    /// "Details ▸" with one item per metric. Plain menu items, so arrow keys,
+    /// type-select and VoiceOver work as in any menu; the symbols are
+    /// decorative, the title names the metric.
+    private func makeDetailsMenuItem() -> NSMenuItem {
+        let submenu = NSMenu(title: DetailsMenu.title)
+        for entry in DetailsMenu.items {
+            let item = NSMenuItem(title: entry.title, action: #selector(openDetails(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = entry.metric
+            item.image = NSImage(systemSymbolName: entry.symbol, accessibilityDescription: nil)
+            item.toolTip = L10n.string("Opens the \(entry.title) page in MacStats.")
+            submenu.addItem(item)
+        }
+
+        let details = NSMenuItem(title: DetailsMenu.title, action: nil, keyEquivalent: "")
+        details.submenu = submenu
+        return details
     }
 
     /// Popped up on demand — assigning `statusItem.menu` permanently would swallow left-clicks.

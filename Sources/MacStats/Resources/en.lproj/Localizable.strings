@@ -680,3 +680,14 @@
 /* Temperature page: captions under the sensor list */
 "Groups show their hottest sensor now and the range of all their sensors. Min and max are the lowest and highest readings since MacStats started, while this page was open." = "Groups show their hottest sensor now and the range of all their sensors. Min and max are the lowest and highest readings since MacStats started, while this page was open.";
 "Min and max are the lowest and highest readings since MacStats started, while this page was open." = "Min and max are the lowest and highest readings since MacStats started, while this page was open.";
+
+/* MARK: Details menu (#33) */
+
+/* Status menu: submenu listing every metric's detail page; also the Settings section for the click option */
+"Details" = "Details";
+/* Status menu, Details submenu: tooltip and VoiceOver help for one metric, e.g. "Opens the Memory page in MacStats." */
+"Opens the %@ page in MacStats." = "Opens the %@ page in MacStats.";
+/* Settings: toggle; when the menu bar shows exactly one metric, clicking it opens that metric's page */
+"Open details when clicking a single menu bar metric" = "Open details when clicking a single menu bar metric";
+/* Settings: footnote under the toggle above */
+"Has no effect when the menu bar shows no metric or more than one; a click then opens the cards. To open any metric's details, right-click MacStats in the menu bar and choose Details." = "Has no effect when the menu bar shows no metric or more than one; a click then opens the cards. To open any metric's details, right-click MacStats in the menu bar and choose Details.";

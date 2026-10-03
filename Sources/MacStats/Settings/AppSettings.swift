@@ -23,6 +23,7 @@ final class AppSettings: ObservableObject {
         static let updateInterval = "updateInterval"
         static let launchAtLogin = "launchAtLogin"
         static let menuBarItems = "menuBarItems"
+        static let opensSingleMetricDetails = "opensSingleMetricDetails"
     }
 
     static let defaultValues: [String: Any] = [
@@ -36,7 +37,8 @@ final class AppSettings: ObservableObject {
         Key.showTemperature: true,
         Key.updateInterval: 1.0,
         Key.launchAtLogin: false,
-        Key.menuBarItems: [MenuBarMetric.cpu.rawValue]
+        Key.menuBarItems: [MenuBarMetric.cpu.rawValue],
+        Key.opensSingleMetricDetails: false
     ]
 
     /// Interval choices offered in Settings, in seconds.
@@ -60,6 +62,13 @@ final class AppSettings: ObservableObject {
     /// from the `show*` card flags: wanting every card in the popover but only
     /// CPU in the menu bar is the normal case.
     @Published var menuBarItems: [String] { didSet { persist(menuBarItems, Key.menuBarItems) } }
+
+    /// When the menu bar shows exactly one metric, a click on it opens that
+    /// metric's page instead of the grid. Off by default: the grid is what
+    /// the click has always shown. See `DetailNavigation.initialRoute`.
+    @Published var opensSingleMetricDetails: Bool {
+        didSet { persist(opensSingleMetricDetails, Key.opensSingleMetricDetails) }
+    }
 
     @Published var updateInterval: Double {
         didSet {
@@ -97,6 +106,7 @@ final class AppSettings: ObservableObject {
         showFan = defaults.bool(forKey: Key.showFan)
         showTemperature = defaults.bool(forKey: Key.showTemperature)
         menuBarItems = defaults.stringArray(forKey: Key.menuBarItems) ?? [MenuBarMetric.cpu.rawValue]
+        opensSingleMetricDetails = defaults.bool(forKey: Key.opensSingleMetricDetails)
         // Snap to an offered choice so the segmented picker always has a selection.
         let storedInterval = defaults.double(forKey: Key.updateInterval)
         updateInterval = Self.intervalChoices.contains(storedInterval) ? storedInterval : 1.0

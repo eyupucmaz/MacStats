@@ -73,6 +73,16 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertTrue(reloaded.showCPU)
     }
 
+    /// Off by default (#33): a click keeps opening the grid until the user opts in.
+    func testSingleMetricDetailsIsOffByDefaultAndRoundTrips() {
+        let settings = AppSettings(defaults: defaults)
+        XCTAssertFalse(settings.opensSingleMetricDetails)
+
+        settings.opensSingleMetricDetails = true
+        XCTAssertTrue(defaults.bool(forKey: AppSettings.Key.opensSingleMetricDetails))
+        XCTAssertTrue(AppSettings(defaults: defaults).opensSingleMetricDetails)
+    }
+
     // MARK: - Launch at login
 
     private func settings(_ loginItem: FakeLoginItem) -> AppSettings {
