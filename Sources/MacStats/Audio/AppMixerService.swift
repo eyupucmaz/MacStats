@@ -76,11 +76,13 @@ final class AppMixerService: ObservableObject {
         case running
     }
 
-    nonisolated static let unsupportedMessage = "Application mixing requires macOS 14.2 or later."
-    nonisolated static let deniedMessage = "MacStats does not have permission to capture application audio."
-    nonisolated static let revokedMessage = "App Mixer stopped because audio capture permission was turned off."
-    nonisolated static let outputChangedMessage = "App Mixer stopped because the output device changed. Enable it again to mix on the new device."
-    nonisolated static let startFailedMessage = "MacStats could not start the application mixer."
+    nonisolated static var unsupportedMessage: String { L10n.string("Application mixing requires macOS 14.2 or later.") }
+    nonisolated static var deniedMessage: String { L10n.string("MacStats does not have permission to capture application audio.") }
+    nonisolated static var revokedMessage: String { L10n.string("App Mixer stopped because audio capture permission was turned off.") }
+    nonisolated static var outputChangedMessage: String {
+        L10n.string("App Mixer stopped because the output device changed. Enable it again to mix on the new device.")
+    }
+    nonisolated static var startFailedMessage: String { L10n.string("MacStats could not start the application mixer.") }
     /// Privacy & Security → Screen & System Audio Recording, where system-audio
     /// capture is granted or revoked.
     nonisolated static let privacySettingsURL = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!

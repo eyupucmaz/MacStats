@@ -46,6 +46,18 @@ metrics and an **Audio** tab with optional controls:
   select **Enable App Mixer**, and stays active only while enabled. The first
   time you enable it, macOS asks for system audio-capture permission.
 
+## Languages
+
+Coming in v0.2.0 and available on `main`. MacStats is available in English and
+Turkish and follows your macOS language. To change it for MacStats only, use
+System Settings → General → Language & Region → Applications. The three-letter
+menu bar labels (`CPU`, `RAM`, `DSK`, `NET`, …) and unit symbols stay the same
+in every language to keep the menu bar compact.
+
+Translations live in `Sources/MacStats/Resources/<language>.lproj/Localizable.strings`
+(app text) and `AppResources/<language>.lproj/InfoPlist.strings` (macOS
+permission prompts); `swift test` checks that every language has every string.
+
 ## Privacy
 
 MacStats reads local system metrics. It has no accounts, no telemetry, and no

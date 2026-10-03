@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Per-app App Mixer to adjust or mute the volume of individual apps (macOS 14.2
   or later). It is off by default and asks for system audio-capture permission
   when enabled; audio is processed locally and never recorded, stored, or sent.
+- Turkish localization. MacStats follows the macOS language (English or
+  Turkish), including VoiceOver labels and the audio-capture permission prompt;
+  the compact menu bar labels stay untranslated.
+- A one-time welcome hint on first launch: the popover opens once and explains
+  the menu bar item, the System and Audio tabs, Settings, and the ⋯ menu until
+  you dismiss it.
 
 ### Changed
 

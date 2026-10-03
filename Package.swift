@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "MacStats",
+    defaultLocalization: "en",
     platforms: [
         .macOS(.v13)
     ],

@@ -16,20 +16,20 @@ struct SettingsView: View {
 
     private var menuBarNote: String {
         settings.showsMetricsInMenuBar
-            ? "Metrics ticked under Menu bar replace the MacStats icon. Each one adds width, so two or three is usually the limit before the bar gets crowded."
-            : "With nothing ticked under Menu bar, the menu bar shows the MacStats icon."
+            ? L10n.string("Metrics ticked under Menu bar replace the MacStats icon. Each one adds width, so two or three is usually the limit before the bar gets crowded.")
+            : L10n.string("With nothing ticked under Menu bar, the menu bar shows the MacStats icon.")
     }
 
     private var samplingNote: String {
         settings.showsMetricsInMenuBar
-            ? "Sampling runs continuously to keep the menu bar live, which costs a little CPU and battery. Turn off every menu bar metric to have it pause while the popover is closed."
-            : "Sampling only runs while the popover is open."
+            ? L10n.string("Sampling runs continuously to keep the menu bar live, which costs a little CPU and battery. Turn off every menu bar metric to have it pause while the popover is closed.")
+            : L10n.string("Sampling only runs while the popover is open.")
     }
 
     var body: some View {
         VStack(spacing: 0) {
             Form {
-                Section("Metrics") {
+                Section(L10n.string("Metrics")) {
                     metricsTable
                     Text(menuBarNote)
                         .font(.caption)
@@ -37,23 +37,22 @@ struct SettingsView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
-                Section("Update Interval") {
-                    Picker("Refresh Rate", selection: $settings.updateInterval) {
-                        Text("1s").tag(1.0)
-                        Text("2s").tag(2.0)
-                        Text("5s").tag(5.0)
-                        Text("30s").tag(30.0)
+                Section(L10n.string("Update Interval")) {
+                    Picker(L10n.string("Refresh Rate"), selection: $settings.updateInterval) {
+                        ForEach(AppSettings.intervalChoices, id: \.self) { seconds in
+                            Text(Self.intervalLabel(seconds)).tag(seconds)
+                        }
                     }
                     .pickerStyle(.segmented)
-                    .accessibilityLabel("Refresh rate")
+                    .accessibilityLabel(L10n.string("Refresh rate"))
                     Text(samplingNote)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
-                Section("Startup") {
-                    Toggle("Launch at Login", isOn: $settings.launchAtLogin)
+                Section(L10n.string("Startup")) {
+                    Toggle(L10n.string("Launch at Login"), isOn: $settings.launchAtLogin)
                         .disabled(!settings.isLaunchAtLoginSupported)
                     Text(settings.launchAtLoginStatusDescription)
                         .font(.caption)
@@ -66,9 +65,9 @@ struct SettingsView: View {
                     }
                 }
 
-                Section("About") {
-                    LabeledContent("MacStats", value: "Version \(Self.versionString)")
-                    Text("Menu bar system monitor.")
+                Section(L10n.string("About")) {
+                    LabeledContent("MacStats", value: L10n.string("Version \(Self.versionString)"))
+                    Text(L10n.string("Menu bar system monitor."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -79,7 +78,7 @@ struct SettingsView: View {
 
             HStack {
                 Spacer()
-                Button("Done", action: onDone)
+                Button(L10n.string("Done"), action: onDone)
                     .keyboardShortcut(.defaultAction)
             }
             .padding(12)
@@ -95,7 +94,7 @@ struct SettingsView: View {
     private var metricsTable: some View {
         Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 8) {
             GridRow {
-                Text("Metric")
+                Text(L10n.string("Metric"))
                     .frame(maxWidth: .infinity, alignment: .leading)
                 ForEach(MetricPlacement.allCases, id: \.self) { placement in
                     Text(placement.columnTitle)
@@ -125,6 +124,11 @@ struct SettingsView: View {
 
     private static let checkboxColumnWidth: CGFloat = 64
 
+    /// Segment title for an update interval, e.g. "5s".
+    static func intervalLabel(_ seconds: Double) -> String {
+        L10n.string("\(String(Int(seconds)))s")
+    }
+
     static var versionString: String {
         let info = Bundle.main.infoDictionary
         let short = info?["CFBundleShortVersionString"] as? String
@@ -133,7 +137,7 @@ struct SettingsView: View {
         case let (short?, build?) where short != build: return "\(short) (\(build))"
         case let (short?, _): return short
         case let (_, build?): return build
-        default: return "unknown"
+        default: return L10n.string("unknown")
         }
     }
 }
@@ -142,20 +146,20 @@ extension MetricPlacement {
     /// Column header in the Settings metrics table.
     var columnTitle: String {
         switch self {
-        case .card: return "Card"
-        case .menuBar: return "Menu bar"
+        case .card: return L10n.string("Card")
+        case .menuBar: return L10n.string("Menu bar")
         }
     }
 
     /// The checkboxes have no visible label, so VoiceOver needs metric and column.
     func accessibilityLabel(for metric: MenuBarMetric) -> String {
-        "\(metric.settingsTitle), \(columnTitle)"
+        L10n.string("\(metric.settingsTitle), \(columnTitle)")
     }
 
     var accessibilityHint: String {
         switch self {
-        case .card: return "Shows this metric as a card when you open MacStats from the menu bar."
-        case .menuBar: return "Shows this metric in the menu bar."
+        case .card: return L10n.string("Shows this metric as a card when you open MacStats from the menu bar.")
+        case .menuBar: return L10n.string("Shows this metric in the menu bar.")
         }
     }
 }

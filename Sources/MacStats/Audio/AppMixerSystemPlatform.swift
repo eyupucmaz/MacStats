@@ -102,7 +102,7 @@ final class SystemAppMixerPlatform: AppMixerPlatform, @unchecked Sendable {
         // build a session once an app starts playing.
         guard !processes.isEmpty else { return [] }
         guard let outputID = AppMixerCoreAudio.defaultOutputID() else {
-            throw AppMixerError.unavailable("No output device is currently available.")
+            throw AppMixerError.unavailable(AudioControlError.deviceUnavailable.message)
         }
         session = try AppMixerSession(outputDeviceID: outputID, processes: processes)
         sessionOutputID = outputID
@@ -140,7 +140,7 @@ final class SystemAppMixerPlatform: AppMixerPlatform, @unchecked Sendable {
             let audible = (AppMixerCoreAudio.uint32(of: id, selector: kAudioProcessPropertyIsRunningOutput) ?? 0) != 0
             let app = NSRunningApplication(processIdentifier: pid)
             let bundleID = try? AppMixerCoreAudio.string(of: id, selector: kAudioProcessPropertyBundleID)
-            let name = app?.localizedName ?? app?.bundleIdentifier ?? bundleID.flatMap { $0.isEmpty ? nil : $0 } ?? "Process \(pid)"
+            let name = app?.localizedName ?? app?.bundleIdentifier ?? bundleID.flatMap { $0.isEmpty ? nil : $0 } ?? L10n.string("Process \(String(pid))")
             return Candidate(id: id, pid: pid, name: name, isAudible: audible)
         }
     }
@@ -175,7 +175,7 @@ final class SystemAppMixerPlatform: AppMixerPlatform, @unchecked Sendable {
         addSystemListener(kAudioHardwarePropertyProcessObjectList) { [weak self] in self?.scheduleEvaluation() }
         addSystemListener(kAudioHardwarePropertyDefaultOutputDevice) { [weak self] in self?.defaultOutputChanged() }
         addSystemListener(kAudioHardwarePropertyServiceRestarted) { [weak self] in
-            self?.emit(.interrupted("App Mixer stopped because the macOS audio service restarted."))
+            self?.emit(.interrupted(L10n.string("App Mixer stopped because the macOS audio service restarted.")))
         }
         syncProcessListeners(AppMixerCoreAudio.objectIDs(of: AppMixerCoreAudio.system, selector: kAudioHardwarePropertyProcessObjectList))
     }

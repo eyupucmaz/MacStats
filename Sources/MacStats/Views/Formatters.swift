@@ -15,9 +15,14 @@ enum MetricFormat {
             .locale(locale))
     }
 
-    /// e.g. "23.4%" / "23%".
+    /// e.g. "23.4%" / "23%"; Turkish puts the sign first ("%23,4").
     static func percent(_ value: Double, digits: Int, locale: Locale) -> String {
-        decimal(value, digits: digits, locale: locale) + "%"
+        percent(decimal(value, digits: digits, locale: locale))
+    }
+
+    /// Attaches the percent sign to an already formatted number.
+    static func percent(_ number: String) -> String {
+        L10n.string("\(number)%")
     }
 
     /// Scales a byte count into decimal (SI) units, the convention Finder uses.
@@ -60,13 +65,15 @@ enum MetricFormat {
             }
         }
 
+        /// Unit symbols are international and stay as they are; the spoken
+        /// names are what VoiceOver reads, so they are localized.
         var spoken: String {
             switch self {
-            case .byte: return "bytes"
-            case .kilo: return "kilobytes"
-            case .mega: return "megabytes"
-            case .giga: return "gigabytes"
-            case .tera: return "terabytes"
+            case .byte: return L10n.string("bytes")
+            case .kilo: return L10n.string("kilobytes")
+            case .mega: return L10n.string("megabytes")
+            case .giga: return L10n.string("gigabytes")
+            case .tera: return L10n.string("terabytes")
             }
         }
     }
@@ -89,7 +96,7 @@ enum MemorySize {
 
     /// Spelled-out form for VoiceOver.
     static func spoken(used: UInt64, total: UInt64, locale: Locale = .autoupdatingCurrent) -> String {
-        "\(gigabytes(used, locale)) of \(gigabytes(total, locale, digits: 0)) gigabytes used"
+        L10n.string("\(gigabytes(used, locale)) of \(gigabytes(total, locale, digits: 0)) gigabytes used")
     }
 
     /// One decimal below 100 GB; above that the tenth is noise.
@@ -120,7 +127,7 @@ enum ByteRate {
     /// Card form, e.g. "0 B/s", "812 KB/s", "1.2 MB/s".
     static func short(_ bytesPerSecond: Double, locale: Locale = .autoupdatingCurrent) -> String {
         let scaled = MetricFormat.decimalBytes(bytesPerSecond, locale: locale)
-        return "\(scaled.number) \(scaled.unit.symbol)/s"
+        return L10n.string("\(scaled.number) \(scaled.unit.symbol)/s")
     }
 
     /// Menu bar form, e.g. "812K", "1.2M": no space, no "B/s" — the menu bar pays
@@ -133,6 +140,6 @@ enum ByteRate {
     /// Spelled-out form for VoiceOver.
     static func spoken(_ bytesPerSecond: Double, locale: Locale = .autoupdatingCurrent) -> String {
         let scaled = MetricFormat.decimalBytes(bytesPerSecond, locale: locale)
-        return "\(scaled.number) \(scaled.unit.spoken) per second"
+        return L10n.string("\(scaled.number) \(scaled.unit.spoken) per second")
     }
 }

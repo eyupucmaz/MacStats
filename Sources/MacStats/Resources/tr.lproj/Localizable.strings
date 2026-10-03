@@ -1,0 +1,281 @@
+/*
+  Localizable.strings (Turkish)
+  MacStats
+
+  The English text is the key (see Sources/MacStats/Localization.swift), so
+  en.lproj and tr.lproj must hold exactly the same keys; LocalizationTests
+  checks that, and that every L10n.string("…") in the sources has an entry.
+
+  Deliberately NOT localized, and so not listed here:
+  - The three-letter menu bar labels CPU, GPU, RAM, DSK, NET, BAT, FAN, TMP:
+    the menu bar must stay compact and aligned, and they read as technical
+    abbreviations in Turkish too.
+  - Unit symbols (B, KB, MB, GB, TB, °C) and the menu bar's compact values
+    ("8.2G", "812K"); only their spoken VoiceOver forms are translated.
+  - The app name "MacStats" and device or app names reported by macOS.
+
+  Format specifiers: every argument is %@, text. Numbers arrive already
+  formatted for the user's region, so "23,4" stays "23,4". Use positional
+  forms such as %2$@ to reorder arguments, and %% for a literal percent sign.
+*/
+
+
+/* MARK: Status item menu, main menu and About panel */
+
+"Settings…" = "Ayarlar…";
+"About MacStats" = "MacStats Hakkında";
+"Quit MacStats" = "MacStats'ten Çık";
+/* Settings window title */
+"MacStats Settings" = "MacStats Ayarları";
+/* About panel credits and the About section in Settings */
+"Menu bar system monitor." = "Menü çubuğu sistem izleyicisi.";
+
+/* MARK: Popover */
+
+/* VoiceOver label of the System/Audio tab picker */
+"MacStats section" = "MacStats bölümü";
+/* Popover tab */
+"System" = "Sistem";
+/* Popover tab */
+"Audio" = "Ses";
+"All stats are hidden. Enable some in Settings." = "Tüm istatistikler gizli. Ayarlar'dan bazılarını açın.";
+/* Tooltip of the gear button */
+"Settings" = "Ayarlar";
+/* VoiceOver label of the gear button */
+"Open Settings" = "Ayarları Aç";
+/* Tooltip of the ⋯ button */
+"More" = "Diğer";
+/* VoiceOver label of the ⋯ button */
+"More actions" = "Diğer eylemler";
+
+/* MARK: First-run hint at the top of the popover */
+
+"Welcome to MacStats" = "MacStats'e Hoş Geldiniz";
+/* Button that dismisses the hint for good */
+"Got It" = "Anladım";
+"Click the MacStats item in the menu bar to open or close this panel." = "Bu paneli açmak veya kapatmak için menü çubuğundaki MacStats öğesine tıklayın.";
+"Use the tabs below to switch between System stats and Audio controls." = "Sistem istatistikleri ile Ses denetimleri arasında geçiş yapmak için aşağıdaki sekmeleri kullanın.";
+"Click the gear to choose which cards and menu bar metrics to show." = "Hangi kartların ve menü çubuğu ölçümlerinin gösterileceğini seçmek için dişli simgesine tıklayın.";
+"Right-click the menu bar item, or click ⋯, for Settings, About and Quit." = "Ayarlar, Hakkında ve Çık için menü çubuğu öğesine sağ tıklayın veya ⋯ simgesine tıklayın.";
+
+/* MARK: Stat card titles. CPU, GPU and RAM stay as they are in Turkish. */
+
+"CPU" = "CPU";
+"GPU" = "GPU";
+"RAM" = "RAM";
+"Battery" = "Pil";
+"Disk" = "Disk";
+"Network" = "Ağ";
+"Fan" = "Fan";
+/* Short title of the temperature card */
+"Temp" = "Sıcaklık";
+
+/* MARK: Stat card values */
+
+/* A formatted number with a percent sign, in cards and the menu bar: "23.4%". Turkish puts the sign first. */
+"%@%%" = "%%%@";
+/* Disk card: percent used, then free space such as "245 GB" */
+"%@%% used · %@ free" = "%%%1$@ dolu · %2$@ boş";
+/* Fan card value */
+"%@ RPM" = "%@ dev/dk";
+/* Network card value: a rate such as "812" + "KB", per second */
+"%@ %@/s" = "%@ %@/sn";
+
+/* MARK: Stat card VoiceOver labels */
+
+"CPU %@ percent" = "CPU yüzde %@";
+"GPU %@ percent" = "GPU yüzde %@";
+"GPU usage not available" = "GPU kullanım bilgisi yok";
+/* Followed by the spoken memory use, e.g. "8.2 of 16 gigabytes used" */
+"Memory %@" = "Bellek, %@";
+/* Spoken memory use: used, then total */
+"%@ of %@ gigabytes used" = "%2$@ gigabaytın %1$@ gigabaytı kullanılıyor";
+"Memory not available" = "Bellek bilgisi yok";
+/* Battery level, then one of the battery states below */
+"Battery %@ percent, %@" = "Pil yüzde %@, %@";
+/* Battery state */
+"Charging" = "şarj oluyor";
+/* Battery state */
+"Full" = "tam dolu";
+/* Battery state */
+"Discharging" = "pilden çalışıyor";
+/* Battery state */
+"AC Power" = "güç adaptörüne bağlı";
+/* Battery state */
+"Unknown" = "durumu bilinmiyor";
+"Battery not available" = "Pil bilgisi yok";
+/* Percent full, free space, total size; sizes are spoken, e.g. "194 gigabytes" */
+"Disk %@ percent full, %@ free of %@" = "Disk yüzde %1$@ dolu, boş alan %2$@, toplam %3$@";
+"Disk usage not available" = "Disk kullanım bilgisi yok";
+/* Download and upload rates, spoken */
+"Network down %@, up %@" = "Ağ indirme %@, yükleme %@";
+"Fan %@ RPM" = "Fan dakikada %@ devir";
+"Fan speed not available" = "Fan hızı bilgisi yok";
+"Temperature %@ degrees Celsius" = "Sıcaklık %@ santigrat derece";
+"Temperature not available" = "Sıcaklık bilgisi yok";
+/* Spoken byte unit */
+"bytes" = "bayt";
+/* Spoken byte unit */
+"kilobytes" = "kilobayt";
+/* Spoken byte unit */
+"megabytes" = "megabayt";
+/* Spoken byte unit */
+"gigabytes" = "gigabayt";
+/* Spoken byte unit */
+"terabytes" = "terabayt";
+/* Spoken rate: number, then a spoken unit such as "megabytes" */
+"%@ %@ per second" = "saniyede %@ %@";
+
+/* MARK: Settings */
+
+/* Section title */
+"Metrics" = "Ölçümler";
+/* Column header of the metrics table */
+"Metric" = "Ölçüm";
+/* Column header of the metrics table: shown as a popover card */
+"Card" = "Kart";
+/* Column header of the metrics table: shown in the menu bar */
+"Menu bar" = "Menü çubuğu";
+/* VoiceOver label of a metrics table checkbox: metric, then column */
+"%@, %@" = "%@, %@";
+"Shows this metric as a card when you open MacStats from the menu bar." = "MacStats'i menü çubuğundan açtığınızda bu ölçümü kart olarak gösterir.";
+"Shows this metric in the menu bar." = "Bu ölçümü menü çubuğunda gösterir.";
+/* Metrics table row */
+"CPU Usage" = "CPU Kullanımı";
+/* Metrics table row */
+"GPU Usage" = "GPU Kullanımı";
+/* Metrics table row */
+"Memory Usage" = "Bellek Kullanımı";
+/* Metrics table row */
+"Disk Usage" = "Disk Kullanımı";
+/* Metrics table row */
+"Network Traffic" = "Ağ Trafiği";
+/* Metrics table row */
+"Battery Level" = "Pil Düzeyi";
+/* Metrics table row */
+"Fan Speed" = "Fan Hızı";
+/* Metrics table row */
+"Temperature" = "Sıcaklık";
+"Metrics ticked under Menu bar replace the MacStats icon. Each one adds width, so two or three is usually the limit before the bar gets crowded." = "Menü çubuğu sütununda işaretlenen ölçümler MacStats simgesinin yerini alır. Her biri genişlik ekler; çubuk kalabalıklaşmadan önce genellikle iki ya da üç ölçüm sınırdır.";
+"With nothing ticked under Menu bar, the menu bar shows the MacStats icon." = "Menü çubuğu sütununda hiçbir şey işaretli değilse menü çubuğunda MacStats simgesi görünür.";
+/* Section title */
+"Update Interval" = "Güncelleme Aralığı";
+/* Picker label */
+"Refresh Rate" = "Yenileme Hızı";
+/* VoiceOver label of the refresh rate picker */
+"Refresh rate" = "Yenileme hızı";
+/* Refresh interval segment, in seconds: "5s" */
+"%@s" = "%@ sn";
+"Sampling runs continuously to keep the menu bar live, which costs a little CPU and battery. Turn off every menu bar metric to have it pause while the popover is closed." = "Menü çubuğunu güncel tutmak için örnekleme sürekli çalışır; bu biraz CPU ve pil harcar. Panel kapalıyken duraklaması için tüm menü çubuğu ölçümlerini kapatın.";
+"Sampling only runs while the popover is open." = "Örnekleme yalnızca panel açıkken çalışır.";
+/* Section title */
+"Startup" = "Başlangıç";
+"Launch at Login" = "Oturum Açılışında Başlat";
+/* Section title */
+"About" = "Hakkında";
+"Version %@" = "Sürüm %@";
+/* Shown when the app version cannot be read */
+"unknown" = "bilinmiyor";
+"Done" = "Bitti";
+
+/* MARK: Launch at Login status and errors */
+
+"Launch at Login only works when MacStats is installed as an app, not in a development build." = "Oturum açılışında başlatma yalnızca MacStats bir uygulama olarak yüklendiğinde çalışır, geliştirme derlemesinde çalışmaz.";
+/* The error reported by macOS follows */
+"Couldn't change Launch at Login: %@" = "Oturum açılışında başlatma ayarı değiştirilemedi: %@";
+"Not available in a development build. Install MacStats as an app to use it." = "Geliştirme derlemesinde kullanılamaz. Kullanmak için MacStats'i uygulama olarak yükleyin.";
+"MacStats will open when you log in." = "MacStats, oturum açtığınızda açılacak.";
+"MacStats won't open automatically when you log in." = "MacStats, oturum açtığınızda otomatik olarak açılmayacak.";
+"Allow MacStats in System Settings › General › Login Items to finish turning this on." = "Bunu açmayı tamamlamak için Sistem Ayarları › Genel › Giriş Öğeleri'nde MacStats'e izin verin.";
+"macOS can't find MacStats' login item. Move MacStats to the Applications folder and try again." = "macOS, MacStats'in giriş öğesini bulamıyor. MacStats'i Uygulamalar klasörüne taşıyıp yeniden deneyin.";
+"Couldn't check whether MacStats opens at login." = "MacStats'in oturum açılışında açılıp açılmadığı denetlenemedi.";
+
+/* MARK: Audio tab: devices */
+
+/* Section title and device picker label */
+"Output" = "Çıkış";
+/* Section title and device picker label */
+"Input" = "Giriş";
+"No Audio Devices" = "Ses Aygıtı Yok";
+"No audio devices found. Connect a device or refresh." = "Ses aygıtı bulunamadı. Bir aygıt bağlayın veya yenileyin.";
+"Refresh" = "Yenile";
+/* VoiceOver label and tooltip of the refresh button */
+"Refresh audio devices" = "Ses aygıtlarını yenile";
+/* Device picker entry when there is no device of that kind */
+"No device available" = "Kullanılabilir aygıt yok";
+/* Device picker entry when no device is selected */
+"None" = "Yok";
+/* Mute checkbox, for the output and for each app */
+"Mute" = "Sessiz";
+/* VoiceOver label of the output volume slider */
+"Output volume" = "Çıkış ses düzeyi";
+/* VoiceOver label of the output mute checkbox */
+"Mute output" = "Çıkışı sessize al";
+/* Spoken volume level */
+"%@ percent" = "yüzde %@";
+/* Spoken volume when it cannot be read */
+"Unavailable" = "Kullanılamıyor";
+/* Spoken volume of a muted slider, e.g. "Muted, 50 percent" */
+"Muted, %@" = "Sessize alındı, %@";
+"MacStats could not read the current audio devices." = "MacStats geçerli ses aygıtlarını okuyamadı.";
+"macOS could not change this audio setting." = "macOS bu ses ayarını değiştiremedi.";
+/* A Core Audio status code follows */
+"macOS could not change this audio setting (error %@)." = "macOS bu ses ayarını değiştiremedi (hata %@).";
+"No output device is currently available." = "Şu anda kullanılabilir bir çıkış aygıtı yok.";
+"The selected device does not expose this audio control." = "Seçili aygıt bu ses denetimini sunmuyor.";
+"The selected device does not allow this audio control to change." = "Seçili aygıt bu ses denetiminin değiştirilmesine izin vermiyor.";
+/* A device name comes first */
+"%@ does not expose an adjustable volume control." = "%@ ayarlanabilir bir ses düzeyi denetimi sunmuyor.";
+"The selected device does not expose an adjustable volume control." = "Seçili aygıt ayarlanabilir bir ses düzeyi denetimi sunmuyor.";
+/* A device name comes first */
+"%@ does not expose an adjustable mute control." = "%@ ayarlanabilir bir sessize alma denetimi sunmuyor.";
+"The selected device does not expose an adjustable mute control." = "Seçili aygıt ayarlanabilir bir sessize alma denetimi sunmuyor.";
+/* Name of a device whose name cannot be read */
+"Unknown device" = "Bilinmeyen aygıt";
+
+/* MARK: Audio tab: App Mixer */
+
+/* Section title */
+"App Mixer" = "Uygulama Mikseri";
+"Enable App Mixer" = "Uygulama Mikserini Aç";
+"Disable App Mixer" = "Uygulama Mikserini Kapat";
+/* Enable button while macOS asks for permission */
+"Waiting for Permission…" = "İzin Bekleniyor…";
+/* Enable button while the mixer starts */
+"Starting…" = "Başlatılıyor…";
+"No app is playing audio yet. Apps appear here when they start playing." = "Henüz ses çalan bir uygulama yok. Uygulamalar ses çalmaya başladığında burada görünür.";
+/* Privacy explanation shown before the mixer is enabled */
+"To set each app's volume, MacStats captures the sound apps send to your output and plays it back at the levels you choose. Audio is processed in memory on this Mac only; nothing is recorded, saved or sent anywhere. Browser tabs are controlled as one browser app." = "Her uygulamanın ses düzeyini ayarlamak için MacStats, uygulamaların çıkışınıza gönderdiği sesi yakalar ve seçtiğiniz düzeylerde yeniden çalar. Ses yalnızca bu Mac'te, bellekte işlenir; hiçbir şey kaydedilmez, saklanmaz ya da bir yere gönderilmez. Tarayıcı sekmeleri tek bir tarayıcı uygulaması olarak denetlenir.";
+"Audio capture is turned off for MacStats. Allow it in Privacy & Security under Screen & System Audio Recording, then enable the mixer again." = "MacStats için ses yakalama kapalı. Gizlilik ve Güvenlik'te Ekran ve Sistem Sesi Kaydı bölümünden izin verin, ardından mikseri yeniden açın.";
+"Open System Settings" = "Sistem Ayarları'nı Aç";
+"macOS may ask for permission to record system audio. If this window closes, reopen MacStats to see the mixer." = "macOS, sistem sesini kaydetmek için izin isteyebilir. Bu pencere kapanırsa mikseri görmek için MacStats'i yeniden açın.";
+/* VoiceOver label of an app volume slider */
+"%@ volume" = "%@ ses düzeyi";
+/* VoiceOver label of an app mute checkbox */
+"Mute %@" = "%@ sesini kapat";
+/* VoiceOver label of an app status icon: app name, then one of the statuses below */
+"%@ %@" = "%@: %@";
+/* App status: muted in the mixer */
+"Muted" = "Sessize alındı";
+/* App status: volume slider at zero */
+"Silent" = "Ses düzeyi sıfır";
+/* App status: being mixed normally */
+"Mixing" = "Karıştırılıyor";
+/* Name of an app process macOS cannot name; the process ID follows */
+"Process %@" = "İşlem %@";
+"Application mixing requires macOS 14.2 or later." = "Uygulama sesi karıştırma için macOS 14.2 veya sonrası gerekir.";
+"MacStats does not have permission to capture application audio." = "MacStats'in uygulama sesini yakalama izni yok.";
+"App Mixer stopped because audio capture permission was turned off." = "Ses yakalama izni kapatıldığı için Uygulama Mikseri durdu.";
+"App Mixer stopped because the output device changed. Enable it again to mix on the new device." = "Çıkış aygıtı değiştiği için Uygulama Mikseri durdu. Yeni aygıtta karıştırmak için mikseri yeniden açın.";
+"App Mixer stopped because the macOS audio service restarted." = "macOS ses hizmeti yeniden başladığı için Uygulama Mikseri durdu.";
+"MacStats could not start the application mixer." = "MacStats uygulama mikserini başlatamadı.";
+"MacStats could not create an application audio tap." = "MacStats uygulama sesi için bir yakalama noktası oluşturamadı.";
+"MacStats received an unexpected application audio format." = "MacStats beklenmeyen bir uygulama ses biçimi aldı.";
+"MacStats could not read the application audio format." = "MacStats uygulama ses biçimini okuyamadı.";
+"MacStats could not create the application mixer output." = "MacStats uygulama mikseri çıkışını oluşturamadı.";
+"MacStats could not prepare the application mixer stream." = "MacStats uygulama mikseri akışını hazırlayamadı.";
+"MacStats could not start the application mixer stream." = "MacStats uygulama mikseri akışını başlatamadı.";
+"MacStats could not identify an audio device." = "MacStats bir ses aygıtını tanımlayamadı.";
+"The current output device has no output streams." = "Geçerli çıkış aygıtının çıkış akışı yok.";
+"The current output device has no output channels." = "Geçerli çıkış aygıtının çıkış kanalı yok.";
+"The current output device uses an audio format the mixer does not support." = "Geçerli çıkış aygıtı, mikserin desteklemediği bir ses biçimi kullanıyor.";
