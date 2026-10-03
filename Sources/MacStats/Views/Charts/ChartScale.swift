@@ -34,7 +34,9 @@ struct ChartValueScale: Equatable {
             high = max(high, span)
         }
 
-        var step = niceStep((high - low) / targetIntervals)
+        var step = unit == .memory
+            ? niceBinaryStep((high - low) / targetIntervals)
+            : niceStep((high - low) / targetIntervals)
         if unit == .count { step = max(step, 1) }
         let lower = (low / step).rounded(.down) * step
         var upper = (high / step).rounded(.up) * step
@@ -42,6 +44,14 @@ struct ChartValueScale: Equatable {
         let intervals = Int(((upper - lower) / step).rounded())
         let ticks = (0...intervals).map { lower + Double($0) * step }
         return ChartValueScale(domain: lower...upper, ticks: ticks, step: step)
+    }
+
+    /// Like `niceStep`, but in 1024-based units so memory ticks land on whole
+    /// binary sizes ("2 GB", "4 GB") rather than "1.9 GB".
+    static func niceBinaryStep(_ raw: Double) -> Double {
+        guard raw.isFinite, raw > 0 else { return 1 }
+        let base = pow(1_024, max((log(raw) / log(1_024)).rounded(.down), 0))
+        return niceStep(raw / base) * base
     }
 
     /// The smallest step from the 1-2-5 series that is at least `raw`.
@@ -65,6 +75,7 @@ struct ChartValueScale: Equatable {
         switch unit {
         case .percent: return 100
         case .bytes, .bytesPerSecond: return 1_000
+        case .memory: return 1_073_741_824
         case .rpm: return 1_000
         case .celsius: return 10
         case .watts: return 1

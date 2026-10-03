@@ -15,6 +15,8 @@ struct MetricPoint: Equatable {
 enum MetricUnit: Equatable {
     case percent
     case bytes
+    /// RAM: binary units labelled GB, matching the RAM card and Activity Monitor.
+    case memory
     case bytesPerSecond
     case rpm
     case celsius

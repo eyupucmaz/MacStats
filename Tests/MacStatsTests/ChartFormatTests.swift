@@ -153,4 +153,17 @@ final class ChartFormatTests: XCTestCase {
             XCTAssertEqual(HistoryRange.allCases.map(\.chartSpokenLabel), ["1 dakika", "5 dakika", "15 dakika", "1 saat"])
         }
     }
+
+    func testMemoryUsesBinaryUnitsLikeTheRAMCard() {
+        // 8.2 GiB reads "8.2 GB" here and on the card, not the decimal "8.8 GB".
+        XCTAssertEqual(MetricValueFormat.short(8_804_682_138, unit: .memory, locale: english), "8.2 GB")
+        XCTAssertEqual(MetricValueFormat.short(8_804_682_138, unit: .bytes, locale: english), "8.8 GB")
+        XCTAssertEqual(MetricValueFormat.short(512 * 1_048_576, unit: .memory, locale: english), "512 MB")
+    }
+
+    func testMemoryAxisTicksLandOnWholeBinarySizes() {
+        let scale = ChartValueScale.make(unit: .memory, minimum: 0, maximum: 12 * 1_073_741_824)
+        let labels = scale.ticks.map { MetricValueFormat.axis($0, unit: .memory, step: scale.step, locale: english) }
+        XCTAssertEqual(labels, ["0 B", "5.0 GB", "10 GB", "15 GB"])
+    }
 }
