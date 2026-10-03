@@ -26,6 +26,8 @@ let package = Package(
                 .linkedFramework("IOKit"),
                 .linkedFramework("CoreAudio"),
                 .linkedFramework("CoreFoundation"),
+                .linkedFramework("CoreWLAN"),
+                .linkedFramework("Network"),
             ]
         ),
         .testTarget(
