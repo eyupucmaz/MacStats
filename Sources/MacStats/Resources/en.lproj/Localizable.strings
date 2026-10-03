@@ -579,3 +579,50 @@
 "Model" = "Model";
 "GPU cores" = "GPU cores";
 "Metal device" = "Metal device";
+
+/* MARK: Battery detail (#28) */
+/* Battery page headline: time left until the battery is full (charging) or empty (on battery), and the battery's power */
+"Until full" = "Until full";
+"Remaining" = "Remaining";
+"Power" = "Power";
+/* Battery page, VoiceOver: battery power, e.g. "12.3 watts into the battery" while charging */
+"%@ into the battery" = "%@ into the battery";
+"%@ from the battery" = "%@ from the battery";
+/* Battery page: chart of battery power (voltage × current) and its note */
+"Battery power" = "Battery power";
+"Voltage × current at the battery. The power chart and the band are recorded while this page is open." = "Voltage × current at the battery. The power chart and the band are recorded while this page is open.";
+/* Battery page: power adapter rows; "Power source" is also the band under the charge chart */
+"Power adapter" = "Power adapter";
+"Power source" = "Power source";
+"Status" = "Status";
+"Connected" = "Connected";
+"Not connected" = "Not connected";
+"Name" = "Name";
+"Wattage" = "Wattage";
+/* Battery page: where a Mac without a battery draws power from */
+"AC power" = "AC power";
+"UPS" = "UPS";
+/* Battery page: shown on Macs without a battery */
+"This Mac has no battery" = "This Mac has no battery";
+"Its power source is shown below." = "Its power source is shown below.";
+/* Battery page: battery health rows */
+"Battery health" = "Battery health";
+"Condition" = "Condition";
+"Service recommended" = "Service recommended";
+"Health" = "Health";
+"Maximum capacity" = "Maximum capacity";
+"Design capacity" = "Design capacity";
+"Cycle count" = "Cycle count";
+/* Cycle count against the cycles the battery is designed for, e.g. "49 of 1000" */
+"%@ of %@" = "%@ of %@";
+"Voltage" = "Voltage";
+"Health is maximum over design capacity. System Settings shows a smoothed figure that can differ by a few points." = "Health is maximum over design capacity. System Settings shows a smoothed figure that can differ by a few points.";
+/* Battery capacity in milliampere-hours, e.g. "5739 mAh", and its VoiceOver form */
+"%@ mAh" = "%@ mAh";
+"%@ milliampere-hours" = "%@ milliampere-hours";
+/* Battery voltage, e.g. "13.02 V", and its VoiceOver form */
+"%@ V" = "%@ V";
+"%@ volts" = "%@ volts";
+/* Battery page: power modes */
+"Modes" = "Modes";
+"Low Power Mode" = "Low Power Mode";

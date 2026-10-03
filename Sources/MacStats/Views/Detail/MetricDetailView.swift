@@ -12,7 +12,7 @@ struct MetricDetailView: View {
         case .ram: MemoryDetailPage()
         case .disk: DiskDetailPage()
         case .network: NetworkDetailPage()
-        case .battery: DetailPlaceholderPage(metric: .battery)
+        case .battery: BatteryDetailPage()
         case .fan: DetailPlaceholderPage(metric: .fan)
         case .temp: DetailPlaceholderPage(metric: .temp)
         }
