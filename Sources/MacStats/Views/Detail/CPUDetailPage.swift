@@ -219,25 +219,21 @@ private struct CPUCoreBar: View {
     let load: CPUSample?
 
     var body: some View {
-        GeometryReader { geometry in
-            let height = geometry.size.height
-            VStack(spacing: 0) {
-                Spacer(minLength: 0)
-                if let load {
-                    Rectangle()
-                        .fill(ChartPalette.color(1))
-                        .frame(height: height * min(load.system, 100) / 100)
-                    Rectangle()
-                        .fill(ChartPalette.color(0))
-                        .frame(height: height * max(min(load.total, 100) - load.system, 0) / 100)
-                }
-            }
-            .frame(width: geometry.size.width, height: height)
+        // Core Animation eases the fills; a SwiftUI animation here redrew the
+        // whole page on every frame (#35).
+        AnimatedBar(direction: .up, segments: segments, cornerRadius: 2)
             .background(.quaternary)
             .clipShape(RoundedRectangle(cornerRadius: 2))
-        }
-        .frame(maxWidth: 18)
-        .animation(.easeOut(duration: 0.2), value: load?.total)
+            .frame(maxWidth: 18)
+    }
+
+    /// User at the bottom, system above it.
+    private var segments: [AnimatedBar.Segment] {
+        guard let load else { return [] }
+        let system = min(load.system, 100)
+        let user = max(min(load.total, 100) - system, 0)
+        return [AnimatedBar.Segment(fraction: user / 100, color: ChartPalette.nsColor(0)),
+                AnimatedBar.Segment(fraction: system / 100, color: ChartPalette.nsColor(1))]
     }
 }
 

@@ -210,15 +210,12 @@ private struct FanView: View {
             if let fraction = fan.fractionOfMaximum,
                let share = FanDetailPresentation.shareOfMaximum(fan, locale: locale) {
                 HStack(spacing: 8) {
-                    GeometryReader { geometry in
-                        Capsule()
-                            .fill(ChartPalette.color(fan.index))
-                            .frame(width: geometry.size.width * fraction)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(.quaternary, in: Capsule())
-                    }
-                    .frame(height: 6)
-                    .animation(.easeOut(duration: 0.2), value: fraction)
+                    // Core Animation eases the fill; a SwiftUI animation here redrew the
+                    // whole page on every frame (#35).
+                    let fill = AnimatedBar.Segment(fraction: fraction, color: ChartPalette.nsColor(fan.index))
+                    AnimatedBar(direction: .forward, segments: [fill], roundsFills: true)
+                        .background(.quaternary, in: Capsule())
+                        .frame(height: 6)
                     Text(share.text)
                         .font(.caption)
                         .foregroundStyle(.secondary)
