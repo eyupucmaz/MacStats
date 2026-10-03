@@ -25,7 +25,7 @@ struct GPUDetailPage: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 8)
         }
-        .onAppear { model.start(history: stats.history) }
+        .onAppear { model.start(engine: stats) }
         .onDisappear { model.stop() }
     }
 }
@@ -47,12 +47,16 @@ final class GPUDetailModel: ObservableObject {
 
     /// Follows the refresh rate the user picked, but never slower than every 2 s: a page
     /// someone is looking at should move. Renderer and tiler readings go into history.
-    func start(history: MetricHistory) {
+    /// Readings reach the page with the engine's ticks (`StatsEngine.coalesce`).
+    func start(engine: StatsEngine) {
         let interval = GPUDetailSampler.period(min(AppSettings.shared.updateInterval, 2))
+        let history = engine.history
         sampler.start(interval: interval) { [weak self, weak history] report in
-            guard let self else { return }
-            if report != self.report { self.report = report }
-            if let history { GPUDetailSeries.record(report, in: history, interval: interval) }
+            engine.coalesce {
+                guard let self else { return }
+                if report != self.report { self.report = report }
+                if let history { GPUDetailSeries.record(report, in: history, interval: interval) }
+            }
         }
     }
 

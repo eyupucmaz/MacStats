@@ -20,7 +20,7 @@ struct CPUDetailPage: View {
             CPUTopProcessesSection(report: model.processes)
             CPUAboutSection(info: model.info, thermalState: model.reading?.thermalState)
         }
-        .onAppear { model.start() }
+        .onAppear { model.start(engine: stats) }
         .onDisappear { model.stop() }
     }
 }
@@ -38,18 +38,22 @@ final class CPUDetailModel: ObservableObject {
 
     /// The bars follow the refresh rate the user picked, but never slower than every
     /// 2 s: a page someone is looking at should move.
-    func start() {
+    /// Readings reach the page with the engine's ticks (`StatsEngine.coalesce`).
+    func start(engine: StatsEngine) {
         let interval = min(AppSettings.shared.updateInterval, 2)
         detailSampler.start(interval: interval) { [weak self] reading in
-            guard let self else { return }
-            var next = reading
-            // A failed per-core read keeps the last bars rather than blanking them.
-            if next.cores == nil { next.cores = self.reading?.cores }
-            if next != self.reading { self.reading = next }
+            engine.coalesce { self?.receive(reading) }
         }
         processSampler.start(interval: 2) { [weak self] report in
-            self?.processes = report
+            engine.coalesce { self?.processes = report }
         }
+    }
+
+    private func receive(_ reading: CPUDetailReading) {
+        var next = reading
+        // A failed per-core read keeps the last bars rather than blanking them.
+        if next.cores == nil { next.cores = self.reading?.cores }
+        if next != self.reading { self.reading = next }
     }
 
     func stop() {

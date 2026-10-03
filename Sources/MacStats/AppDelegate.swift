@@ -356,10 +356,16 @@ enum StatsPollingPolicy {
 // MARK: - NSPopoverDelegate
 
 extension AppDelegate: NSPopoverDelegate {
+    func popoverWillShow(_ notification: Notification) {
+        StatsEngine.shared.notifiesViews = true
+    }
+
     func popoverDidClose(_ notification: Notification) {
         // Reopening starts at the grid rather than a page the user has forgotten.
         detailNavigation.back()
         applyPollingPolicy(popoverShown: false)
+        // The hidden popover's views keep observing the engine; stop telling them (#35).
+        StatsEngine.shared.notifiesViews = false
     }
 }
 

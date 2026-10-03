@@ -19,7 +19,7 @@ struct TemperatureDetailPage: View {
             TemperatureHistorySection(history: stats.history, range: range, timeline: model.timeline)
             TemperatureSensorsSection(report: model.report, session: model.session)
         }
-        .onAppear { model.start() }
+        .onAppear { model.start(engine: stats) }
         .onDisappear { model.stop() }
     }
 }
@@ -62,12 +62,15 @@ final class TemperatureDetailModel: ObservableObject {
         if let observer { NotificationCenter.default.removeObserver(observer) }
     }
 
-    func start() {
+    /// Readings reach the page with the engine's ticks (`StatsEngine.coalesce`).
+    func start(engine: StatsEngine) {
         sampler.start(interval: Self.interval) { [weak self] report in
-            guard let self else { return }
-            Self.sharedSession.record(report.readings)
-            if report != self.report { self.report = report }
-            if Self.sharedSession != self.session { self.session = Self.sharedSession }
+            engine.coalesce {
+                guard let self else { return }
+                Self.sharedSession.record(report.readings)
+                if report != self.report { self.report = report }
+                if Self.sharedSession != self.session { self.session = Self.sharedSession }
+            }
         }
         recordThermalState()
         guard observer == nil else { return }

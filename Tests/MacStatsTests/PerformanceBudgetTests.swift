@@ -147,6 +147,7 @@ private final class PerformanceHarness {
         anchor.orderFrontRegardless()
         anchorWindow = anchor
         guard let view = anchor.contentView else { return }
+        engine.notifiesViews = true // `AppDelegate.popoverWillShow`
         popover.show(relativeTo: view.bounds, of: view, preferredEdge: .minY)
     }
 
@@ -161,6 +162,7 @@ private final class PerformanceHarness {
     func closePopover() {
         popover?.close()
         navigation.back()
+        engine.notifiesViews = false
     }
 
     func tearDown() {
