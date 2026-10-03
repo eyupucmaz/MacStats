@@ -37,6 +37,15 @@ struct SettingsView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
+                Section(DetailsMenu.title) {
+                    Toggle(L10n.string("Open details when clicking a single menu bar metric"),
+                           isOn: $settings.opensSingleMetricDetails)
+                    Text(L10n.string("Has no effect when the menu bar shows no metric or more than one; a click then opens the cards. To open any metric's details, right-click MacStats in the menu bar and choose Details."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
                 Section(L10n.string("Update Interval")) {
                     Picker(L10n.string("Refresh Rate"), selection: $settings.updateInterval) {
                         ForEach(AppSettings.intervalChoices, id: \.self) { seconds in

@@ -6,7 +6,6 @@ struct StatsView: View {
     @ObservedObject private var settings = AppSettings.shared
     @ObservedObject private var onboarding = Onboarding.shared
     @ObservedObject var navigation: DetailNavigation
-    @State private var selectedTab: PopoverTab = .system
     /// The card with keyboard focus; Return opens it.
     @FocusState private var focusedCard: MenuBarMetric?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -31,7 +30,7 @@ struct StatsView: View {
                 OnboardingHint(onDismiss: { onboarding.dismissHint() })
             }
 
-            Picker(L10n.string("MacStats section"), selection: $selectedTab) {
+            Picker(L10n.string("MacStats section"), selection: $navigation.tab) {
                 Text(L10n.string("System")).tag(PopoverTab.system)
                 Text(L10n.string("Audio")).tag(PopoverTab.audio)
             }
@@ -41,7 +40,7 @@ struct StatsView: View {
 
             Divider()
 
-            if selectedTab == .system {
+            if navigation.tab == .system {
                 systemContent
             } else {
                 AudioTab()
@@ -51,9 +50,9 @@ struct StatsView: View {
         .frame(width: Self.popoverWidth)
         // Past the cap the popover stops growing and the page's scroll view
         // takes the squeeze. The Audio tab keeps sizing itself.
-        .frame(maxHeight: selectedTab == .system ? Self.maxPopoverHeight : nil)
+        .frame(maxHeight: navigation.tab == .system ? Self.maxPopoverHeight : nil)
         .environmentObject(navigation)
-        .onChange(of: selectedTab) { onSelectTab($0) }
+        .onChange(of: navigation.tab) { onSelectTab($0) }
     }
 
     /// The grid and the detail pages slide like a navigation stack: a page

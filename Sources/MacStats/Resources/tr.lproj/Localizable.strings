@@ -680,3 +680,14 @@
 /* Temperature page: captions under the sensor list */
 "Groups show their hottest sensor now and the range of all their sensors. Min and max are the lowest and highest readings since MacStats started, while this page was open." = "Gruplar şu an en sıcak sensörlerini ve tüm sensörlerinin aralığını gösterir. En az ve en çok, MacStats başladığından beri bu sayfa açıkken alınan en düşük ve en yüksek ölçümlerdir.";
 "Min and max are the lowest and highest readings since MacStats started, while this page was open." = "En az ve en çok, MacStats başladığından beri bu sayfa açıkken alınan en düşük ve en yüksek ölçümlerdir.";
+
+/* MARK: Details menu (#33) */
+
+/* Status menu: submenu listing every metric's detail page; also the Settings section for the click option */
+"Details" = "Ayrıntılar";
+/* Status menu, Details submenu: tooltip and VoiceOver help for one metric, e.g. "Opens the Memory page in MacStats." */
+"Opens the %@ page in MacStats." = "MacStats'te %@ sayfasını açar.";
+/* Settings: toggle; when the menu bar shows exactly one metric, clicking it opens that metric's page */
+"Open details when clicking a single menu bar metric" = "Menü çubuğundaki tek ölçüme tıklayınca ayrıntılarını aç";
+/* Settings: footnote under the toggle above */
+"Has no effect when the menu bar shows no metric or more than one; a click then opens the cards. To open any metric's details, right-click MacStats in the menu bar and choose Details." = "Menü çubuğunda hiç ölçüm yoksa ya da birden fazla ölçüm varsa etkisi yoktur; tıklama o zaman kartları açar. Herhangi bir ölçümün ayrıntılarını açmak için menü çubuğunda MacStats'e sağ tıklayıp Ayrıntılar'ı seçin.";
