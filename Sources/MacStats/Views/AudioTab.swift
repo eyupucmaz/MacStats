@@ -1,3 +1,4 @@
+import AppKit
 import CoreAudio
 import SwiftUI
 
@@ -24,26 +25,50 @@ struct AudioTab: View {
     private var appMixerSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label("App Mixer", systemImage: "slider.horizontal.3").font(.headline)
-            Text("Browser tabs are controlled as one browser app. Mixing stays active only while enabled.")
-                .font(.caption).foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            if appMixer.isRunning {
+            if appMixer.capability == .requiresMacOS142 {
+                Text("Application mixing requires macOS 14.2 or later.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else if appMixer.isRunning {
                 Button("Disable App Mixer") { appMixer.disable() }
                 if appMixer.processes.isEmpty {
-                    Text("No audible applications detected.").font(.caption).foregroundStyle(.secondary)
+                    Text("No app is playing audio yet. Apps appear here when they start playing.")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 } else {
                     ForEach(appMixer.processes) { process in processRow(process) }
                 }
-            } else if appMixer.capability == .requiresMacOS142 {
-                Text("Application mixing requires macOS 14.2 or later.")
-                    .font(.caption).foregroundStyle(.secondary)
             } else {
-                Button("Enable App Mixer") { Task { await appMixer.enable() } }
+                // Shown before the user enables the mixer, i.e. before macOS asks.
+                Text("To set each app's volume, MacStats captures the sound apps send to your output and plays it back at the levels you choose. Audio is processed in memory on this Mac only; nothing is recorded, saved or sent anywhere. Browser tabs are controlled as one browser app.")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if appMixer.permission == .denied {
+                    Text("Audio capture is turned off for MacStats. Allow it in Privacy & Security under Screen & System Audio Recording, then enable the mixer again.")
+                        .font(.caption).foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button("Open System Settings") { NSWorkspace.shared.open(AppMixerService.privacySettingsURL) }
+                }
+                Button(enableTitle) { Task { await appMixer.enable() } }
+                    .disabled(appMixer.isBusy)
+                if appMixer.phase == .requestingPermission {
+                    Text("macOS may ask for permission to record system audio. If this window closes, reopen MacStats to see the mixer.")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
-            if let status = appMixer.statusMessage {
+            if let status = appMixer.statusMessage, !(appMixer.permission == .denied && status == AppMixerService.deniedMessage) {
                 Text(status).font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+        }
+        .onAppear { appMixer.refreshPermission() }
+    }
+
+    private var enableTitle: String {
+        switch appMixer.phase {
+        case .requestingPermission: return "Waiting for Permission…"
+        case .starting: return "Starting…"
+        case .off, .running: return "Enable App Mixer"
         }
     }
 
@@ -72,12 +97,14 @@ struct AudioTab: View {
         let selected = direction == .output ? audioDevices.state.defaultOutputID : audioDevices.state.defaultInputID
         VStack(alignment: .leading, spacing: 8) {
             Text(title).font(.headline)
-            Picker(title, selection: Binding(
-                get: { selected ?? 0 },
-                set: { audioDevices.selectDefaultDevice($0, direction: direction) }
+            Picker(title, selection: Binding<AudioObjectID?>(
+                get: { selected },
+                set: { id in if let id { audioDevices.selectDefaultDevice(id, direction: direction) } }
             )) {
-                if devices.isEmpty { Text("No device available").tag(AudioObjectID(0)) }
-                ForEach(devices) { device in Text(device.name).tag(device.id) }
+                if devices.isEmpty || selected == nil {
+                    Text(devices.isEmpty ? "No device available" : "None").tag(AudioObjectID?.none)
+                }
+                ForEach(devices) { device in Text(device.name).tag(Optional(device.id)) }
             }
             .disabled(devices.isEmpty)
             if direction == .output {
