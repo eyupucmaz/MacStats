@@ -13,8 +13,8 @@ struct MetricDetailView: View {
         case .disk: DiskDetailPage()
         case .network: NetworkDetailPage()
         case .battery: BatteryDetailPage()
-        case .fan: DetailPlaceholderPage(metric: .fan)
-        case .temp: DetailPlaceholderPage(metric: .temp)
+        case .fan: FanDetailPage()
+        case .temp: TemperatureDetailPage()
         }
     }
 }

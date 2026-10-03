@@ -7,11 +7,14 @@ import IOKit
 /// key does not exist or the SMC rejects a request, reads return `nil`/`0`.
 /// Nothing here traps.
 ///
-/// Keys used by this file:
-///   `F<n>Ac` fan n actual RPM                                    (flt / fpe2)
+/// Keys used by this file (all read-only; nothing here ever writes to the SMC):
+///   `FNum`   number of fans                                       (ui8)
+///   `F<n>Ac` `F<n>Mn` `F<n>Mx` `F<n>Tg`
+///           fan n actual, minimum, maximum and target RPM        (flt / fpe2)
 ///   `Tp09` `Tp0T` `Tp01` `Tp05` `Tp0D` `Tp0H` `Tg0f` `Tg0j`
 ///           Apple Silicon CPU/SoC die sensors                    (flt, °C)
 ///   `TC0P` `TC0D` `TCAD` Intel-era CPU proximity/die sensors      (sp78, °C)
+///   every key in `TemperatureSensorCatalog`, for the Temperature page (#32)
 final class SMCService: @unchecked Sendable {
 
     static let shared = SMCService()
@@ -130,9 +133,30 @@ final class SMCService: @unchecked Sendable {
     func readFanRPM() -> Int? { readFanRPM(index: 0) }
 
     /// Actual RPM of the given fan (`F<n>Ac`).
-    func readFanRPM(index: Int) -> Int? {
-        guard let rpm = readDouble("F\(index)Ac"), rpm.isFinite, rpm >= 0 else { return nil }
+    func readFanRPM(index: Int) -> Int? { readFanRPM(index: index, .actual) }
+
+    /// The speeds the SMC keeps for each fan, by key suffix. Read-only: the fan page
+    /// (#31) shows them, nothing sets them (see docs/FAN_CONTROL.md).
+    enum FanValue: String, CaseIterable {
+        case actual = "Ac"
+        case minimum = "Mn"
+        case maximum = "Mx"
+        case target = "Tg"
+    }
+
+    /// One of the given fan's speeds (`F<n>Ac` / `Mn` / `Mx` / `Tg`) in RPM; nil when
+    /// the key is missing or the value is not a speed.
+    func readFanRPM(index: Int, _ value: FanValue) -> Int? {
+        guard index >= 0, index < 10,
+              let rpm = readDouble("F\(index)\(value.rawValue)"), rpm.isFinite, rpm >= 0 else { return nil }
         return Int(rpm.rounded())
+    }
+
+    /// How many fans the SMC reports (`FNum`): 0 on a fanless Mac, nil when the key
+    /// cannot be read.
+    func readFanCount() -> Int? {
+        guard let count = readDouble("FNum"), count.isFinite, count >= 0, count < 256 else { return nil }
+        return Int(count)
     }
 
     /// CPU die temperature in Celsius, or `nil` when no sensor reads plausibly.
@@ -141,6 +165,12 @@ final class SMCService: @unchecked Sendable {
         temperatureLock.lock()
         defer { temperatureLock.unlock() }
         return temperatureSelector.read(now: ProcessInfo.processInfo.systemUptime) { readDouble($0) }
+    }
+
+    /// Any temperature key in Celsius, as decoded; nil when the key is missing.
+    /// Plausibility is the caller's call (`isPlausibleTemperature`).
+    func readTemperature(key: String) -> Double? {
+        readDouble(key)
     }
 
     /// The temperature key that is actually being used, once probed.

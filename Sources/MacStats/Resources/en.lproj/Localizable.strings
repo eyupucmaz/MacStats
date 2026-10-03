@@ -626,3 +626,57 @@
 /* Battery page: power modes */
 "Modes" = "Modes";
 "Low Power Mode" = "Low Power Mode";
+
+/* MARK: Fan detail (#31) */
+
+/* Fan page: section listing every fan */
+"Fans" = "Fans";
+/* Fan page: shown on Macs without a fan */
+"No fan" = "No fan";
+"This Mac is cooled passively." = "This Mac is cooled passively.";
+/* Fan page: shown when the SMC reports no fan speeds at all */
+"macOS did not report fan speeds." = "macOS did not report fan speeds.";
+/* Fan page: how many fans the Mac has */
+"Number of fans" = "Number of fans";
+/* Fan page: one of several fans, numbered from 1, e.g. "Fan 2" */
+"Fan %@" = "Fan %@";
+/* Fan page: speed limits and the speed the system is steering a fan towards */
+"Minimum" = "Minimum";
+"Maximum" = "Maximum";
+"Target" = "Target";
+/* Fan page: VoiceOver label of the gauge of a fan's speed against its maximum */
+"Speed" = "Speed";
+/* Fan page: under the gauge; the argument is a percentage such as "40%" */
+"%@ of max" = "%@ of max";
+/* Fan page, VoiceOver: the gauge, e.g. "40 percent of maximum speed" */
+"%@ percent of maximum speed" = "%@ percent of maximum speed";
+/* Fan page: caption under the chart on Macs with two fans */
+"Fan 2 is recorded while this page is open." = "Fan 2 is recorded while this page is open.";
+
+/* MARK: Temperature detail (#32) */
+
+/* Temperature page: chart and section title, the card's CPU temperature over time */
+"CPU temperature" = "CPU temperature";
+/* Caption under the temperature chart */
+"The band is the thermal state macOS reports, recorded while this page is open." = "The band is the thermal state macOS reports, recorded while this page is open.";
+/* Temperature page: section listing every temperature sensor */
+"Sensors" = "Sensors";
+/* Temperature sensor groups (Performance cores, Efficiency cores, GPU and Battery reuse earlier keys) */
+"SoC / other" = "SoC / other";
+"Storage" = "Storage";
+/* Temperature page: one sensor of a group, numbered from 1, e.g. "Sensor 3" */
+"Sensor %@" = "Sensor %@";
+/* Temperature page, VoiceOver: a sensor group: its hottest reading now, then the lowest and highest reading of any of its sensors this session */
+"%@, hottest %@, lowest %@, highest %@" = "%@, hottest %@, lowest %@, highest %@";
+/* Temperature page, VoiceOver: a sensor, its reading now, and its lowest and highest reading this session */
+"%@, %@, lowest %@, highest %@" = "%@, %@, lowest %@, highest %@";
+/* Temperature page, VoiceOver: state of a sensor group that can be opened and closed */
+"Expanded" = "Expanded";
+"Collapsed" = "Collapsed";
+/* Temperature page: shown on Macs whose chip has no sensor list yet; only the card's sensor is listed */
+"Detailed sensors aren't mapped for this Mac yet." = "Detailed sensors aren't mapped for this Mac yet.";
+/* Temperature page: shown when no sensor reads at all */
+"macOS did not report any temperature sensors." = "macOS did not report any temperature sensors.";
+/* Temperature page: captions under the sensor list */
+"Groups show their hottest sensor now and the range of all their sensors. Min and max are the lowest and highest readings since MacStats started, while this page was open." = "Groups show their hottest sensor now and the range of all their sensors. Min and max are the lowest and highest readings since MacStats started, while this page was open.";
+"Min and max are the lowest and highest readings since MacStats started, while this page was open." = "Min and max are the lowest and highest readings since MacStats started, while this page was open.";
