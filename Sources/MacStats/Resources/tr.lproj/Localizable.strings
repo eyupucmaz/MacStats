@@ -306,3 +306,38 @@
 /* Placeholder shown on a detail page that is not built yet */
 "Details coming soon" = "Ayrıntılar yakında";
 "Charts and a breakdown of this number will appear here." = "Bu değerin grafikleri ve ayrıntılı dökümü burada görünecek.";
+
+
+/* MARK: Charts (#23) */
+
+/* Detail chart placeholder until at least two samples exist */
+"Collecting data…" = "Veri toplanıyor…";
+/* VoiceOver title of the history range picker (1 m / 5 m / 15 m / 1 h) */
+"History range" = "Geçmiş aralığı";
+/* History range segment, in minutes: "5 m" */
+"%@ m" = "%@ dk";
+/* History range segment, in hours: "1 h" */
+"%@ h" = "%@ sa";
+/* Spoken history ranges */
+"%@ minute" = "%@ dakika";
+"%@ minutes" = "%@ dakika";
+"%@ hour" = "%@ saat";
+/* Stats row under a chart: lowest, average and highest value in the visible range */
+"Min" = "En az";
+"Avg" = "Ort.";
+"Max" = "En çok";
+/* VoiceOver form of the stats row; each argument is a spoken value such as "23.4 percent" */
+"Minimum %@, average %@, maximum %@" = "En düşük %@, ortalama %@, en yüksek %@";
+/* VoiceOver: the stats row before any sample was collected */
+"No statistics yet" = "Henüz istatistik yok";
+/* Chart audio graph: axis titles */
+"Time" = "Zaman";
+"Value" = "Değer";
+/* Chart audio graph summary: a spoken range such as "5 minutes" */
+"Last %@" = "Son %@";
+/* Chart audio graph summary: range, then each series' latest value, e.g. "Last 5 minutes. Now: User 23.4 percent" */
+"Last %@. Now: %@" = "Son %@. Şu an: %@";
+/* Spoken chart values */
+"%@ revolutions per minute" = "dakikada %@ devir";
+"%@ degrees Celsius" = "%@ santigrat derece";
+"%@ watts" = "%@ vat";
