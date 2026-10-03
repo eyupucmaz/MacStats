@@ -13,8 +13,8 @@ final class MenuBarRendererTests: XCTestCase {
             gpuUsage: 15.2,
             memoryUsed: 8_804_682_138,   // ~8.2 GiB
             memoryTotal: 17_179_869_184, // 16 GiB
-            diskReadBytes: 12_582_912,   // 12 MiB/s
-            diskWriteBytes: 3_145_728,   // 3 MiB/s
+            diskUsedBytes: 300_000_000_000,  // 300 GB
+            diskTotalBytes: 494_000_000_000, // 494 GB
             networkDownBytes: 1_258_291, // ~1.2 MiB/s
             networkUpBytes: 348_160,     // 340 KiB/s
             batteryLevel: 87,
@@ -40,8 +40,21 @@ final class MenuBarRendererTests: XCTestCase {
         XCTAssertEqual(MenuBarRenderer.segment(.ram, snapshot()), "RAM 8.2G")
     }
 
-    func testDiskSegmentShowsBothDirections() {
-        XCTAssertEqual(MenuBarRenderer.segment(.disk, snapshot()), "DSK ↓12M ↑3.0M")
+    func testDiskSegmentShowsUsedPercent() {
+        XCTAssertEqual(MenuBarRenderer.segment(.disk, snapshot()), "DSK 61%")
+    }
+
+    func testDiskSegmentIsUnavailableWithoutTotal() {
+        var s = snapshot()
+        s.diskTotalBytes = 0
+        XCTAssertEqual(MenuBarRenderer.segment(.disk, s), "DSK —")
+    }
+
+    func testDiskSizeUsesDecimalUnits() {
+        XCTAssertEqual(DiskSize.short(820_000_000), "820 MB")
+        XCTAssertEqual(DiskSize.short(9_700_000_000), "9.7 GB")
+        XCTAssertEqual(DiskSize.short(245_000_000_000), "245 GB")
+        XCTAssertEqual(DiskSize.short(1_200_000_000_000), "1.2 TB")
     }
 
     func testNetworkSegmentShowsBothDirections() {

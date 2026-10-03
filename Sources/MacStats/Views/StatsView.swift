@@ -112,11 +112,18 @@ struct StatsView: View {
                                             : "Battery not available"))
         }
         if settings.showDisk {
-            let value = "R \(ByteRate.short(stats.diskReadBytes))  W \(ByteRate.short(stats.diskWriteBytes))"
+            let available = stats.diskTotalBytes > 0
+            let percent = available ? Double(stats.diskUsedBytes) / Double(stats.diskTotalBytes) * 100 : 0
+            let free = stats.diskTotalBytes - min(stats.diskUsedBytes, stats.diskTotalBytes)
+            let value = available
+                ? String(format: "%.0f%% used · %@ free", percent, DiskSize.short(free))
+                : Self.unavailable
             result.append(StatCardModel(id: "disk", title: "Disk", value: value,
                                         icon: "internaldrive", color: .purple,
-                                        accessibility: "Disk read \(ByteRate.spoken(stats.diskReadBytes)), "
-                                            + "write \(ByteRate.spoken(stats.diskWriteBytes))"))
+                                        accessibility: available
+                                            ? String(format: "Disk %.0f percent full, ", percent)
+                                                + "\(DiskSize.spoken(free)) free of \(DiskSize.spoken(stats.diskTotalBytes))"
+                                            : "Disk usage not available"))
         }
         if settings.showNetwork {
             let value = "↓\(ByteRate.short(stats.networkDownBytes))  ↑\(ByteRate.short(stats.networkUpBytes))"
@@ -220,6 +227,31 @@ enum ByteRate {
         default:
             return String(format: "%.1f gigabytes per second", value / 1_073_741_824)
         }
+    }
+}
+
+/// Storage sizes in decimal units, matching Finder and About This Mac.
+enum DiskSize {
+    /// e.g. "820 MB", "9.7 GB", "245 GB", "1.2 TB".
+    static func short(_ bytes: UInt64) -> String {
+        let value = Double(bytes)
+        switch value {
+        case ..<1e9:
+            return String(format: "%.0f MB", value / 1e6)
+        case ..<1e12:
+            let gb = value / 1e9
+            return String(format: gb < 10 ? "%.1f GB" : "%.0f GB", gb)
+        default:
+            return String(format: "%.1f TB", value / 1e12)
+        }
+    }
+
+    /// Spelled-out form for VoiceOver.
+    static func spoken(_ bytes: UInt64) -> String {
+        short(bytes)
+            .replacingOccurrences(of: "MB", with: "megabytes")
+            .replacingOccurrences(of: "GB", with: "gigabytes")
+            .replacingOccurrences(of: "TB", with: "terabytes")
     }
 }
 
