@@ -341,3 +341,58 @@
 "%@ revolutions per minute" = "dakikada %@ devir";
 "%@ degrees Celsius" = "%@ santigrat derece";
 "%@ watts" = "%@ vat";
+
+
+
+/* MARK: Disk detail (#29) */
+
+/* Disk page section titles */
+"Startup Disk" = "Başlangıç Diski";
+"All Volumes" = "Tüm Birimler";
+"Disk Activity" = "Disk Etkinliği";
+"Processes by Disk I/O" = "Disk G/Ç'ye Göre İşlemler";
+/* Disk page headline: share of the startup disk in use, e.g. "61% used" */
+"%@%% used" = "%%%@ dolu";
+/* Free and total space, e.g. "194 GB free of 494 GB" */
+"%@ free of %@" = "%@ boş, toplam %@";
+/* Disk page: startup disk capacity breakdown */
+"Volume name" = "Birim adı";
+"Used space" = "Kullanılan alan";
+"Available space" = "Kullanılabilir alan";
+"Purgeable space" = "Temizlenebilir alan";
+"File system" = "Dosya sistemi";
+"Encryption" = "Şifreleme";
+"Encrypted" = "Şifreli";
+"Not encrypted" = "Şifreli değil";
+"macOS did not report the startup disk's capacity." = "macOS başlangıç diskinin kapasitesini bildirmedi.";
+/* How a volume is attached */
+"Internal" = "Dahili";
+"External" = "Harici";
+"Removable" = "Çıkarılabilir";
+/* VoiceOver: a volume row, e.g. "Macintosh HD, Internal, startup disk, 61 percent used, 194 gigabytes free of 494 gigabytes" */
+"startup disk" = "başlangıç diski";
+"%@ percent used, %@ free of %@" = "yüzde %@ dolu, boş alan %@, toplam %@";
+/* Disk activity chart series */
+"Read" = "Okuma";
+"Write" = "Yazma";
+/* Disk operations per second, e.g. "1250/s"; spoken form */
+"%@/s" = "%@/sn";
+"%@ per second" = "saniyede %@";
+"Read operations" = "Okuma işlemleri";
+"Write operations" = "Yazma işlemleri";
+/* Bytes read / written by the drives since the Mac started */
+"Read since startup" = "Açılıştan beri okunan";
+"Written since startup" = "Açılıştan beri yazılan";
+"macOS does not report read and write activity for this Mac's drives." = "macOS bu Mac'in sürücüleri için okuma ve yazma etkinliğini bildirmiyor.";
+/* Top processes by disk I/O; rates such as "1.2 MB/s" */
+"Read %@ · Write %@" = "Okuma %@ · Yazma %@";
+"%@, reading %@, writing %@" = "%@, okuma %@, yazma %@";
+"No process is reading or writing right now." = "Şu anda okuma ya da yazma yapan işlem yok.";
+"Disk I/O is shown only for processes MacStats can inspect." = "Disk G/Ç yalnızca MacStats'in inceleyebildiği işlemler için gösterilir.";
+/* Disk page: the drive behind the startup disk */
+"Drive model" = "Sürücü modeli";
+"Drive type" = "Sürücü türü";
+"Solid-state drive" = "Katı hal sürücüsü";
+"Hard disk drive" = "Sabit disk sürücüsü";
+"Connection" = "Bağlantı";
+"Firmware" = "Ürün yazılımı";
