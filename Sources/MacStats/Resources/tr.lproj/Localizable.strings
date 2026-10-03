@@ -341,3 +341,65 @@
 "%@ revolutions per minute" = "dakikada %@ devir";
 "%@ degrees Celsius" = "%@ santigrat derece";
 "%@ watts" = "%@ vat";
+
+
+/* MARK: Memory detail (#27) */
+
+/* Memory detail page: label of the used / total figure */
+"Used" = "Kullanılan";
+
+/* Memory detail page: section and chart titles */
+"Memory used" = "Kullanılan bellek";
+"Memory pressure" = "Bellek baskısı";
+"Breakdown" = "Dağılım";
+"Swap & paging" = "Takas ve sayfalama";
+"Top processes" = "En çok bellek kullanan işlemler";
+
+/* Memory pressure chart legend */
+"Pressure" = "Baskı";
+
+/* Memory pressure levels macOS reports */
+"Normal" = "Normal";
+"Warning" = "Uyarı";
+"Critical" = "Kritik";
+
+/* VoiceOver label of the colored pressure-level strip under the pressure chart */
+"Pressure level" = "Baskı düzeyi";
+
+/* VoiceOver: the pressure-level strip has no readings in the visible range */
+"No readings yet" = "Henüz ölçüm yok";
+
+/* Caption under the memory pressure chart */
+"The line is wired plus compressed memory as a share of RAM. The band is the level macOS reports, recorded while this page is open." = "Çizgi, kalıcı ve sıkıştırılmış belleğin RAM'e oranıdır. Şerit, macOS'un bildirdiği düzeydir ve bu sayfa açıkken kaydedilir.";
+
+/* Memory breakdown categories, as in Activity Monitor */
+"App memory" = "Uygulama belleği";
+"Wired" = "Kalıcı";
+"Compressed" = "Sıkıştırılmış";
+"Cached files" = "Önbellekteki dosyalar";
+"Free" = "Boş";
+
+/* Shown instead of the memory breakdown when the VM statistics query fails */
+"macOS did not report memory statistics." = "macOS bellek istatistiklerini bildirmedi.";
+
+/* Swap row; "Not in use" when macOS has not created a swap file */
+"Swap used" = "Kullanılan takas";
+"Not in use" = "Kullanılmıyor";
+
+/* VoiceOver: swap used, then swap total, e.g. "1.2 gigabytes, total 2 gigabytes" */
+"%@, total %@" = "%@, toplam %@";
+
+/* Paging activity per second */
+"Page-ins" = "Sayfa girişleri";
+"Page-outs" = "Sayfa çıkışları";
+"Swap-ins" = "Takas girişleri";
+"Swap-outs" = "Takas çıkışları";
+"Compressions" = "Sıkıştırmalar";
+"Decompressions" = "Sıkıştırma açmaları";
+
+/* Under the top process list when some processes cannot be read */
+"Showing processes you can inspect" = "Yalnızca incelenebilen işlemler gösteriliyor";
+
+/* Memory detail page: About section rows */
+"Physical memory" = "Fiziksel bellek";
+"Page size" = "Sayfa boyutu";

@@ -9,7 +9,7 @@ struct MetricDetailView: View {
         switch metric {
         case .cpu: DetailPlaceholderPage(metric: .cpu)
         case .gpu: DetailPlaceholderPage(metric: .gpu)
-        case .ram: DetailPlaceholderPage(metric: .ram)
+        case .ram: MemoryDetailPage()
         case .disk: DetailPlaceholderPage(metric: .disk)
         case .network: DetailPlaceholderPage(metric: .network)
         case .battery: DetailPlaceholderPage(metric: .battery)
