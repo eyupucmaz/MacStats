@@ -65,6 +65,12 @@ protocol ProcessReading {
     /// `proc_name`: the short (possibly truncated) process name.
     func shortName(of pid: pid_t) -> String?
     func runningApp(pid: pid_t) -> ProcessAppInfo?
+    /// argv[0], for naming processes whose executable is called e.g. "2.1.288".
+    func firstArgument(of pid: pid_t) -> String?
+}
+
+extension ProcessReading {
+    func firstArgument(of pid: pid_t) -> String? { nil }
 }
 
 /// Public libproc + AppKit only: no private APIs, no root, no entitlements. Processes the
@@ -122,5 +128,9 @@ struct LibprocProcessReader: ProcessReading {
     func runningApp(pid: pid_t) -> ProcessAppInfo? {
         guard let app = NSRunningApplication(processIdentifier: pid) else { return nil }
         return ProcessAppInfo(name: app.localizedName, icon: app.icon, isRegular: app.activationPolicy == .regular)
+    }
+
+    func firstArgument(of pid: pid_t) -> String? {
+        ProcessArguments.firstArgument(of: pid)
     }
 }

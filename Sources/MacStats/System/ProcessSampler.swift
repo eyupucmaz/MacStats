@@ -157,6 +157,7 @@ final class ProcessSampler {
         let reader = self.reader
         return ProcessIdentity.make(path: reader.executablePath(of: pid),
                                     fallbackName: reader.shortName(of: pid) ?? String(pid),
-                                    lookupApp: { reader.runningApp(pid: pid) })
+                                    lookupApp: { reader.runningApp(pid: pid) },
+                                    firstArgument: { reader.firstArgument(of: pid) })
     }
 }
