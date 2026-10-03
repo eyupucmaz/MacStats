@@ -552,3 +552,30 @@
 "gigabits" = "gigabits";
 "megabits" = "megabits";
 "kilobits" = "kilobits";
+
+/* MARK: GPU detail (#26) */
+
+/* GPU page section titles; "GPUs" heads the list on Macs with more than one GPU */
+"GPU Memory" = "GPU Memory";
+"About This GPU" = "About This GPU";
+"GPUs" = "GPUs";
+/* GPU page chart lines: overall utilization (as on the card), the pixel pipeline and the geometry pipeline */
+"Overall" = "Overall";
+"Renderer" = "Renderer";
+"Tiler" = "Tiler";
+"Renderer is the GPU's pixel work, tiler its geometry work." = "Renderer is the GPU's pixel work, tiler its geometry work.";
+/* GPU page, Macs with several GPUs: which GPU the renderer and tiler lines belong to */
+"Renderer and tiler: %@" = "Renderer and tiler: %@";
+/* GPU page: shown instead of the headline and chart when the driver reports no utilization */
+"macOS does not report GPU utilization for this Mac's graphics driver." = "macOS does not report GPU utilization for this Mac's graphics driver.";
+/* GPU page footnote */
+"Per-app GPU usage is not shown: macOS has no public API for it." = "Per-app GPU usage is not shown: macOS has no public API for it.";
+/* GPU memory rows: memory the driver has in use, has allocated, and dedicated video memory */
+"In use" = "In use";
+"Allocated" = "Allocated";
+"Video memory" = "Video memory";
+"Apple silicon has unified memory: the GPU uses the same RAM as the CPU, so this is part of the memory on the RAM page, not separate video memory." = "Apple silicon has unified memory: the GPU uses the same RAM as the CPU, so this is part of the memory on the RAM page, not separate video memory.";
+/* About This GPU rows */
+"Model" = "Model";
+"GPU cores" = "GPU cores";
+"Metal device" = "Metal device";
