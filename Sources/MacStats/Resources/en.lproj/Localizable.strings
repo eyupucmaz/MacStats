@@ -19,7 +19,6 @@
   forms such as %2$@ to reorder arguments, and %% for a literal percent sign.
 */
 
-
 /* MARK: Status item menu, main menu and About panel */
 
 "Settings…" = "Settings…";
@@ -307,7 +306,6 @@
 "Details coming soon" = "Details coming soon";
 "Charts and a breakdown of this number will appear here." = "Charts and a breakdown of this number will appear here.";
 
-
 /* MARK: Charts (#23) */
 
 /* Detail chart placeholder until at least two samples exist */
@@ -341,7 +339,6 @@
 "%@ revolutions per minute" = "%@ revolutions per minute";
 "%@ degrees Celsius" = "%@ degrees Celsius";
 "%@ watts" = "%@ watts";
-
 
 /* MARK: CPU detail (#25) */
 
@@ -393,3 +390,56 @@
 "%@ day" = "%@ day";
 "%@ days" = "%@ days";
 "%@ hours" = "%@ hours";
+
+/* MARK: Disk detail (#29) */
+
+/* Disk page section titles */
+"Startup Disk" = "Startup Disk";
+"All Volumes" = "All Volumes";
+"Disk Activity" = "Disk Activity";
+"Processes by Disk I/O" = "Processes by Disk I/O";
+/* Disk page headline: share of the startup disk in use, e.g. "61% used" */
+"%@%% used" = "%@%% used";
+/* Free and total space, e.g. "194 GB free of 494 GB" */
+"%@ free of %@" = "%@ free of %@";
+/* Disk page: startup disk capacity breakdown */
+"Volume name" = "Volume name";
+"Used space" = "Used space";
+"Available space" = "Available space";
+"Purgeable space" = "Purgeable space";
+"File system" = "File system";
+"Encryption" = "Encryption";
+"Encrypted" = "Encrypted";
+"Not encrypted" = "Not encrypted";
+"macOS did not report the startup disk's capacity." = "macOS did not report the startup disk's capacity.";
+/* How a volume is attached */
+"Internal" = "Internal";
+"External" = "External";
+"Removable" = "Removable";
+/* VoiceOver: a volume row, e.g. "Macintosh HD, Internal, startup disk, 61 percent used, 194 gigabytes free of 494 gigabytes" */
+"startup disk" = "startup disk";
+"%@ percent used, %@ free of %@" = "%@ percent used, %@ free of %@";
+/* Disk activity chart series */
+"Read" = "Read";
+"Write" = "Write";
+/* Disk operations per second, e.g. "1250/s"; spoken form */
+"%@/s" = "%@/s";
+"%@ per second" = "%@ per second";
+"Read operations" = "Read operations";
+"Write operations" = "Write operations";
+/* Bytes read / written by the drives since the Mac started */
+"Read since startup" = "Read since startup";
+"Written since startup" = "Written since startup";
+"macOS does not report read and write activity for this Mac's drives." = "macOS does not report read and write activity for this Mac's drives.";
+/* Top processes by disk I/O; rates such as "1.2 MB/s" */
+"Read %@ · Write %@" = "Read %@ · Write %@";
+"%@, reading %@, writing %@" = "%@, reading %@, writing %@";
+"No process is reading or writing right now." = "No process is reading or writing right now.";
+"Disk I/O is shown only for processes MacStats can inspect." = "Disk I/O is shown only for processes MacStats can inspect.";
+/* Disk page: the drive behind the startup disk */
+"Drive model" = "Drive model";
+"Drive type" = "Drive type";
+"Solid-state drive" = "Solid-state drive";
+"Hard disk drive" = "Hard disk drive";
+"Connection" = "Connection";
+"Firmware" = "Firmware";
