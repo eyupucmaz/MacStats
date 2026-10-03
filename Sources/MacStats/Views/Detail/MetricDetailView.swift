@@ -7,7 +7,7 @@ struct MetricDetailView: View {
 
     var body: some View {
         switch metric {
-        case .cpu: DetailPlaceholderPage(metric: .cpu)
+        case .cpu: CPUDetailPage()
         case .gpu: DetailPlaceholderPage(metric: .gpu)
         case .ram: DetailPlaceholderPage(metric: .ram)
         case .disk: DetailPlaceholderPage(metric: .disk)

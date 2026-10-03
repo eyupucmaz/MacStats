@@ -86,6 +86,42 @@ final class CPUMetricsTests: XCTestCase {
         XCTAssertNil(CPUMetrics.usage(previous: one, current: one, coreCount: 0))
     }
 
+    // MARK: - Per core
+
+    func testCoreUsagesKeepEachCoreSeparate() {
+        let loads = CPUMetrics.coreUsages(previous: ticks([Core(), Core(), Core(user: 5, idle: 5)]),
+                                          current: ticks([Core(user: 75, system: 25, idle: 0),
+                                                          Core(idle: 100),
+                                                          Core(user: 5, idle: 5)]),
+                                          coreCount: 3)
+        XCTAssertEqual(loads.count, 3)
+        assertUsage(loads[0], total: 100, user: 75, system: 25)
+        assertUsage(loads[1], total: 0, user: 0, system: 0)
+        XCTAssertNil(loads[2], "a core with no elapsed ticks has no reading")
+    }
+
+    func testPooledUsageIsUnchangedByThePerCoreRefactor() {
+        let previous = [Core(user: 10, idle: 10), Core(system: 3, idle: 7)]
+        let current = [Core(user: 40, idle: 80), Core(system: 13, idle: 17, nice: 20)]
+        // user 30 + nice 20 = 50, system 10, idle 80 → 140 ticks.
+        assertUsage(usage(from: previous, to: current), total: 60.0 / 140 * 100,
+                    user: 50.0 / 140 * 100, system: 10.0 / 140 * 100)
+    }
+
+    func testCoreUsagesRejectMismatchedSnapshots() {
+        XCTAssertEqual(CPUMetrics.coreUsages(previous: ticks([Core()]), current: ticks([Core(), Core()]),
+                                             coreCount: 2).count, 0)
+    }
+
+    func testUpdateCoresNeedsABaseline() {
+        let metrics = CPUMetrics()
+        XCTAssertNil(metrics.updateCores(ticks: ticks([Core(), Core()]), coreCount: 2))
+        let loads = metrics.updateCores(ticks: ticks([Core(user: 10, idle: 10), Core(idle: 20)]), coreCount: 2)
+        XCTAssertEqual(loads?.count, 2)
+        assertUsage(loads?[0] ?? nil, total: 50, user: 50, system: 0)
+        assertUsage(loads?[1] ?? nil, total: 0, user: 0, system: 0)
+    }
+
     // MARK: - Baselines
 
     func testFirstUpdateOnlyStoresTheBaseline() {

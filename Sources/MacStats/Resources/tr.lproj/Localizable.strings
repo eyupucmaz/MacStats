@@ -341,3 +341,55 @@
 "%@ revolutions per minute" = "dakikada %@ devir";
 "%@ degrees Celsius" = "%@ santigrat derece";
 "%@ watts" = "%@ vat";
+
+
+/* MARK: CPU detail (#25) */
+
+/* CPU page section titles */
+"Usage" = "Kullanım";
+"Cores" = "Çekirdekler";
+"Load Average" = "Yük Ortalaması";
+"Top Processes" = "En Yoğun İşlemler";
+"About This CPU" = "Bu İşlemci Hakkında";
+/* CPU time split: user processes, the system (kernel), and nothing running */
+"User" = "Kullanıcı";
+"Idle" = "Boşta";
+/* Stats row title under the CPU chart: user + system */
+"Total" = "Toplam";
+/* CPU core groups; macOS names Apple-silicon perf levels Performance, Efficiency or Super */
+"Performance cores" = "Performans çekirdekleri";
+"Efficiency cores" = "Verimlilik çekirdekleri";
+"Super cores" = "Süper çekirdekler";
+/* A perf level with a name macOS introduced later, e.g. "Turbo cores" */
+"%@ cores" = "%@ çekirdekleri";
+/* VoiceOver: one core's bar, e.g. "Core 7, 23 percent" */
+"Core %@, %@" = "Çekirdek %@, %@";
+/* VoiceOver: a core group with its average, e.g. "Efficiency cores, average 12.5 percent" */
+"%@, average %@" = "%@, ortalama %@";
+/* Load average columns: over 1, 5 and 15 minutes */
+"1 min" = "1 dk";
+"5 min" = "5 dk";
+"15 min" = "15 dk";
+/* VoiceOver: a load average column; the argument is a spoken range such as "5 minutes" */
+"Load average over %@" = "Son %@ yük ortalaması";
+/* Under the load averages; the argument is the number of logical cores */
+"Out of %@ cores; higher means work is waiting." = "%@ çekirdek üzerinden; daha yüksek değer işlerin beklediğini gösterir.";
+/* Under a process list when some processes belong to other users or are protected */
+"Showing processes you can inspect" = "İncelenebilen işlemler gösteriliyor";
+/* About This CPU rows */
+"Chip" = "Çip";
+"Uptime" = "Açık kalma süresi";
+"Thermal state" = "Isıl durum";
+/* macOS thermal states, from cool to throttling hard */
+"Nominal" = "Normal";
+"Fair" = "Orta";
+"Serious" = "Yüksek";
+"Critical" = "Kritik";
+/* Uptime, short: "3 d 4 h", "4 h 12 min", "12 min" */
+"%@ d %@ h" = "%@ g %@ sa";
+"%@ h %@ min" = "%@ sa %@ dk";
+"%@ min" = "%@ dk";
+/* Uptime, spoken */
+"%@ day" = "%@ gün";
+"%@ days" = "%@ gün";
+"%@ hours" = "%@ saat";
