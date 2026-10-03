@@ -68,6 +68,77 @@ final class ProcessIdentityTests: XCTestCase {
         XCTAssertNil(result.groupBundlePath)
     }
 
+    // MARK: - Unhelpful executable names (#25)
+
+    private let claudeCode = "/Users/me/.local/share/claude/versions/2.1.288"
+
+    func testVersionNamedExecutableTakesItsNameFromArgv0() {
+        let result = ProcessIdentity.make(path: claudeCode, fallbackName: "2.1.288",
+                                          lookupApp: { nil }, firstArgument: { "claude" })
+        XCTAssertEqual(result.name, "claude")
+        XCTAssertNil(result.groupBundlePath)
+    }
+
+    func testArgv0PathIsReducedToItsBasename() {
+        let name = ProcessIdentity.readableName("2.1.288", path: claudeCode,
+                                                firstArgument: { "/usr/local/bin/claude" })
+        XCTAssertEqual(name, "claude")
+    }
+
+    func testWithoutAUsefulArgv0TheNearestMeaningfulFolderNamesIt() {
+        // argv[0] missing, or itself a version: "versions" is generic, so "claude" wins.
+        XCTAssertEqual(ProcessIdentity.readableName("2.1.288", path: claudeCode, firstArgument: { nil }), "claude")
+        XCTAssertEqual(ProcessIdentity.readableName("2.1.288", path: claudeCode, firstArgument: { "2.1.288" }), "claude")
+        XCTAssertEqual(ProcessIdentity.readableName("20.11.1", path: "/opt/tools/node/v20.11.1/bin/20.11.1",
+                                                    firstArgument: { nil }), "node")
+    }
+
+    func testNothingBetterKeepsTheOriginalName() {
+        XCTAssertEqual(ProcessIdentity.readableName("1.0", path: nil, firstArgument: { nil }), "1.0")
+        XCTAssertEqual(ProcessIdentity.readableName("1.0", path: "/1.0", firstArgument: { "" }), "1.0")
+    }
+
+    func testHelpfulNamesNeverReadTheArguments() {
+        let lookups = Counter()
+        let result = ProcessIdentity.make(path: "/usr/libexec/7-zip", fallbackName: "short", lookupApp: { nil },
+                                          firstArgument: { lookups.value += 1; return "other" })
+        XCTAssertEqual(result.name, "7-zip")
+        XCTAssertEqual(lookups.value, 0)
+    }
+
+    func testUnhelpfulNameRule() {
+        for name in ["2.1.288", "v20.11.1", "1.4.0-beta.2", "1.0+build.7", "12345", "", "  "] {
+            XCTAssertTrue(ProcessIdentity.isUnhelpfulName(name), name)
+        }
+        for name in ["claude", "node", "7-zip", "2to3", "python3.12", "v8", "Google Chrome", "1Password"] {
+            XCTAssertFalse(ProcessIdentity.isUnhelpfulName(name), name)
+        }
+    }
+
+    // MARK: - KERN_PROCARGS2
+
+    /// argc, the executable path, NUL padding, argv, then the environment.
+    private func procargs(argc: Int32, path: String, argv: [String], padding: Int = 3) -> [UInt8] {
+        var bytes = withUnsafeBytes(of: argc) { Array($0) }
+        bytes += Array(path.utf8) + [UInt8](repeating: 0, count: padding)
+        for argument in argv + ["HOME=/Users/me"] { bytes += Array(argument.utf8) + [0] }
+        return bytes
+    }
+
+    func testProcargsParserReturnsArgv0() {
+        let buffer = procargs(argc: 2, path: claudeCode, argv: ["claude", "--resume"])
+        XCTAssertEqual(ProcessArguments.firstArgument(procargs: buffer), "claude")
+    }
+
+    func testProcargsParserRejectsMalformedBuffers() {
+        XCTAssertNil(ProcessArguments.firstArgument(procargs: [UInt8]()))
+        XCTAssertNil(ProcessArguments.firstArgument(procargs: [1, 0, 0]))
+        XCTAssertNil(ProcessArguments.firstArgument(procargs: procargs(argc: 0, path: "/bin/x", argv: [])))
+        // Truncated inside argv[0].
+        let truncated = procargs(argc: 1, path: "/bin/x", argv: ["claude"]).prefix(4 + 6 + 3 + 3)
+        XCTAssertNil(ProcessArguments.firstArgument(procargs: truncated))
+    }
+
     func testBundleHelpers() {
         XCTAssertEqual(ProcessIdentity.appBundles(in: renderer),
                        [chrome, chrome + "/Contents/Frameworks/Google Chrome Framework.framework/Versions/1.0/Helpers/"

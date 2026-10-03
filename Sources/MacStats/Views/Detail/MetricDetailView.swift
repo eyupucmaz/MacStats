@@ -7,11 +7,11 @@ struct MetricDetailView: View {
 
     var body: some View {
         switch metric {
-        case .cpu: DetailPlaceholderPage(metric: .cpu)
+        case .cpu: CPUDetailPage()
         case .gpu: DetailPlaceholderPage(metric: .gpu)
-        case .ram: DetailPlaceholderPage(metric: .ram)
-        case .disk: DetailPlaceholderPage(metric: .disk)
-        case .network: DetailPlaceholderPage(metric: .network)
+        case .ram: MemoryDetailPage()
+        case .disk: DiskDetailPage()
+        case .network: NetworkDetailPage()
         case .battery: DetailPlaceholderPage(metric: .battery)
         case .fan: DetailPlaceholderPage(metric: .fan)
         case .temp: DetailPlaceholderPage(metric: .temp)

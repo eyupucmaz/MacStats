@@ -42,6 +42,22 @@ enum MetricFormat {
         return ("0", .byte)
     }
 
+    /// Scales a byte count into binary units labelled KB/MB/GB, the convention the
+    /// RAM card and Activity Monitor use for memory. Same rounding as `decimalBytes`.
+    static func binaryBytes(_ bytes: Double, locale: Locale) -> (number: String, unit: ByteUnit) {
+        let bytes = bytes.isFinite ? max(bytes, 0) : 0
+        for (index, unit) in ByteUnit.allCases.enumerated() {
+            let value = bytes / pow(1_024, Double(index))
+            let digits = unit == .byte || value >= 9.95 ? 0 : 1
+            let step = digits == 0 ? 1.0 : 10.0
+            let rounded = (value * step).rounded() / step
+            if rounded < 1000 || unit == ByteUnit.allCases.last {
+                return (decimal(value, digits: digits, locale: locale), unit)
+            }
+        }
+        return ("0", .byte)
+    }
+
     enum ByteUnit: CaseIterable {
         case byte, kilo, mega, giga, tera
 
@@ -156,6 +172,9 @@ enum MetricValueFormat {
         case .bytes:
             let scaled = MetricFormat.decimalBytes(value, locale: locale)
             return "\(scaled.number) \(scaled.unit.symbol)"
+        case .memory:
+            let scaled = MetricFormat.binaryBytes(value, locale: locale)
+            return "\(scaled.number) \(scaled.unit.symbol)"
         case .bytesPerSecond:
             return ByteRate.short(value, locale: locale)
         case .rpm:
@@ -176,7 +195,7 @@ enum MetricValueFormat {
         switch unit {
         case .percent:
             return MetricFormat.percent(value, digits: 0, locale: locale)
-        case .bytes, .bytesPerSecond, .rpm:
+        case .bytes, .memory, .bytesPerSecond, .rpm:
             return short(value, unit: unit, locale: locale)
         case .celsius:
             return MetricFormat.decimal(value, digits: digits, locale: locale) + "°C"
@@ -194,6 +213,9 @@ enum MetricValueFormat {
             return L10n.string("\(MetricFormat.decimal(value, digits: 1, locale: locale)) percent")
         case .bytes:
             let scaled = MetricFormat.decimalBytes(value, locale: locale)
+            return "\(scaled.number) \(scaled.unit.spoken)"
+        case .memory:
+            let scaled = MetricFormat.binaryBytes(value, locale: locale)
             return "\(scaled.number) \(scaled.unit.spoken)"
         case .bytesPerSecond:
             return ByteRate.spoken(value, locale: locale)

@@ -11,6 +11,8 @@ struct InterfaceCounters: Equatable {
     let name: String
     let inputBytes: UInt64
     let outputBytes: UInt64
+    /// The driver's link speed (`ifi_baudrate`) in bits per second; 0 when it reports none.
+    var linkSpeed: UInt64 = 0
 }
 
 /// Network throughput from sysctl(NET_RT_IFLIST2): the 64-bit if_data64 counters of each
@@ -24,14 +26,24 @@ final class NetworkMetrics {
 
     private let readCounters: () -> [InterfaceCounters]?
     private let now: () -> UInt64
+    /// Also given every reading, so the session totals keep counting from launch.
+    private let ledger: NetworkTrafficLedger?
     private var previous: [String: InterfaceCounters]?
     private var previousTime: UInt64 = 0
 
+    /// The engine's instance: live counters, feeding `NetworkTrafficLedger.shared`. The
+    /// engine primes it at launch, which is what "since MacStats started" counts from.
+    convenience init() {
+        self.init(readCounters: NetworkMetrics.readInterfaceCounters, ledger: .shared)
+    }
+
     /// `readCounters` and `now` (nanoseconds, monotonic) are injectable for tests.
-    init(readCounters: @escaping () -> [InterfaceCounters]? = NetworkMetrics.readInterfaceCounters,
-         now: @escaping () -> UInt64 = { DispatchTime.now().uptimeNanoseconds }) {
+    init(readCounters: @escaping () -> [InterfaceCounters]?,
+         now: @escaping () -> UInt64 = { DispatchTime.now().uptimeNanoseconds },
+         ledger: NetworkTrafficLedger? = nil) {
         self.readCounters = readCounters
         self.now = now
+        self.ledger = ledger
     }
 
     /// The counting rule: Ethernet, Wi-Fi, USB/Thunderbolt adapters and tethering all
@@ -45,6 +57,7 @@ final class NetworkMetrics {
     /// Returns nil on the first call, when no time has elapsed, or on failure.
     func sample() -> NetworkSample? {
         guard let counters = readCounters() else { return nil }
+        ledger?.record(counters)
         let time = now()
         let current = Dictionary(counters.filter { Self.countsTraffic(of: $0.name) }.map { ($0.name, $0) },
                                  uniquingKeysWith: { first, _ in first })
@@ -114,7 +127,8 @@ final class NetworkMetrics {
 
                 result.append(InterfaceCounters(name: String(decoding: raw[nameStart ..< nameEnd], as: UTF8.self),
                                                 inputBytes: message.ifm_data.ifi_ibytes,
-                                                outputBytes: message.ifm_data.ifi_obytes))
+                                                outputBytes: message.ifm_data.ifi_obytes,
+                                                linkSpeed: message.ifm_data.ifi_baudrate))
             }
             return result
         }

@@ -19,7 +19,6 @@
   forms such as %2$@ to reorder arguments, and %% for a literal percent sign.
 */
 
-
 /* MARK: Status item menu, main menu and About panel */
 
 "Settings…" = "Settings…";
@@ -307,7 +306,6 @@
 "Details coming soon" = "Details coming soon";
 "Charts and a breakdown of this number will appear here." = "Charts and a breakdown of this number will appear here.";
 
-
 /* MARK: Charts (#23) */
 
 /* Detail chart placeholder until at least two samples exist */
@@ -341,3 +339,216 @@
 "%@ revolutions per minute" = "%@ revolutions per minute";
 "%@ degrees Celsius" = "%@ degrees Celsius";
 "%@ watts" = "%@ watts";
+
+/* MARK: CPU detail (#25) */
+
+/* CPU page section titles */
+"Usage" = "Usage";
+"Cores" = "Cores";
+"Load Average" = "Load Average";
+"Top Processes" = "Top Processes";
+"About This CPU" = "About This CPU";
+/* CPU time split: user processes, the system (kernel), and nothing running */
+"User" = "User";
+"Idle" = "Idle";
+/* Stats row title under the CPU chart: user + system */
+"Total" = "Total";
+/* CPU core groups; macOS names Apple-silicon perf levels Performance, Efficiency or Super */
+"Performance cores" = "Performance cores";
+"Efficiency cores" = "Efficiency cores";
+"Super cores" = "Super cores";
+/* A perf level with a name macOS introduced later, e.g. "Turbo cores" */
+"%@ cores" = "%@ cores";
+/* VoiceOver: one core's bar, e.g. "Core 7, 23 percent" */
+"Core %@, %@" = "Core %@, %@";
+/* VoiceOver: a core group with its average, e.g. "Efficiency cores, average 12.5 percent" */
+"%@, average %@" = "%@, average %@";
+/* Load average columns: over 1, 5 and 15 minutes */
+"1 min" = "1 min";
+"5 min" = "5 min";
+"15 min" = "15 min";
+/* VoiceOver: a load average column; the argument is a spoken range such as "5 minutes" */
+"Load average over %@" = "Load average over %@";
+/* Under the load averages; the argument is the number of logical cores */
+"Out of %@ cores; higher means work is waiting." = "Out of %@ cores; higher means work is waiting.";
+/* Under a process list when some processes belong to other users or are protected */
+"Showing processes you can inspect" = "Showing processes you can inspect";
+/* About This CPU rows */
+"Chip" = "Chip";
+"Uptime" = "Uptime";
+"Thermal state" = "Thermal state";
+/* macOS thermal states, from cool to throttling hard */
+"Nominal" = "Nominal";
+"Fair" = "Fair";
+"Serious" = "Serious";
+"Critical" = "Critical";
+/* Uptime, short: "3 d 4 h", "4 h 12 min", "12 min" */
+"%@ d %@ h" = "%@ d %@ h";
+"%@ h %@ min" = "%@ h %@ min";
+"%@ min" = "%@ min";
+/* Uptime, spoken */
+"%@ day" = "%@ day";
+"%@ days" = "%@ days";
+"%@ hours" = "%@ hours";
+
+/* MARK: Disk detail (#29) */
+
+/* Disk page section titles */
+"Startup Disk" = "Startup Disk";
+"All Volumes" = "All Volumes";
+"Disk Activity" = "Disk Activity";
+"Processes by Disk I/O" = "Processes by Disk I/O";
+/* Disk page headline: share of the startup disk in use, e.g. "61% used" */
+"%@%% used" = "%@%% used";
+/* Free and total space, e.g. "194 GB free of 494 GB" */
+"%@ free of %@" = "%@ free of %@";
+/* Disk page: startup disk capacity breakdown */
+"Volume name" = "Volume name";
+"Used space" = "Used space";
+"Available space" = "Available space";
+"Purgeable space" = "Purgeable space";
+"File system" = "File system";
+"FileVault" = "FileVault";
+"On" = "On";
+"Off" = "Off";
+"macOS did not report the startup disk's capacity." = "macOS did not report the startup disk's capacity.";
+/* How a volume is attached */
+"Internal" = "Internal";
+"External" = "External";
+"Removable" = "Removable";
+/* VoiceOver: a volume row, e.g. "Macintosh HD, Internal, startup disk, 61 percent used, 194 gigabytes free of 494 gigabytes" */
+"startup disk" = "startup disk";
+"%@ percent used, %@ free of %@" = "%@ percent used, %@ free of %@";
+/* Disk activity chart series */
+"Read" = "Read";
+"Write" = "Write";
+/* Disk operations per second, e.g. "1250/s"; spoken form */
+"%@/s" = "%@/s";
+"%@ per second" = "%@ per second";
+"Read operations" = "Read operations";
+"Write operations" = "Write operations";
+/* Bytes read / written by the drives since the Mac started */
+"Read since startup" = "Read since startup";
+"Written since startup" = "Written since startup";
+"macOS does not report read and write activity for this Mac's drives." = "macOS does not report read and write activity for this Mac's drives.";
+/* Top processes by disk I/O; rates such as "1.2 MB/s" */
+"Read %@ · Write %@" = "Read %@ · Write %@";
+"%@, reading %@, writing %@" = "%@, reading %@, writing %@";
+"No process is reading or writing right now." = "No process is reading or writing right now.";
+"Disk I/O is shown only for processes MacStats can inspect." = "Disk I/O is shown only for processes MacStats can inspect.";
+/* Disk page: the drive behind the startup disk */
+"Drive model" = "Drive model";
+"Drive type" = "Drive type";
+"Solid-state drive" = "Solid-state drive";
+"Hard disk drive" = "Hard disk drive";
+"Connection" = "Connection";
+"Firmware" = "Firmware";
+
+/* MARK: Memory detail (#27) */
+
+/* Memory detail page: label of the used / total figure */
+"Used" = "Used";
+
+/* Memory detail page: section and chart titles */
+"Memory used" = "Memory used";
+"Memory pressure" = "Memory pressure";
+"Breakdown" = "Breakdown";
+"Swap & paging" = "Swap & paging";
+"Top processes" = "Top processes";
+
+/* Memory pressure chart legend */
+"Pressure" = "Pressure";
+
+/* Memory pressure levels macOS reports */
+"Normal" = "Normal";
+"Warning" = "Warning";
+
+/* VoiceOver label of the colored pressure-level strip under the pressure chart */
+"Pressure level" = "Pressure level";
+
+/* VoiceOver: the pressure-level strip has no readings in the visible range */
+"No readings yet" = "No readings yet";
+
+/* Caption under the memory pressure chart */
+"The line is wired plus compressed memory as a share of RAM. The band is the level macOS reports, recorded while this page is open." = "The line is wired plus compressed memory as a share of RAM. The band is the level macOS reports, recorded while this page is open.";
+
+/* Memory breakdown categories, as in Activity Monitor */
+"App memory" = "App memory";
+"Wired" = "Wired";
+"Compressed" = "Compressed";
+"Cached files" = "Cached files";
+"Free" = "Free";
+
+/* Shown instead of the memory breakdown when the VM statistics query fails */
+"macOS did not report memory statistics." = "macOS did not report memory statistics.";
+
+/* Swap row; "Not in use" when macOS has not created a swap file */
+"Swap used" = "Swap used";
+"Not in use" = "Not in use";
+
+/* VoiceOver: swap used, then swap total, e.g. "1.2 gigabytes, total 2 gigabytes" */
+"%@, total %@" = "%@, total %@";
+
+/* Paging activity per second */
+"Page-ins" = "Page-ins";
+"Page-outs" = "Page-outs";
+"Swap-ins" = "Swap-ins";
+"Swap-outs" = "Swap-outs";
+"Compressions" = "Compressions";
+"Decompressions" = "Decompressions";
+
+/* Memory detail page: About section rows */
+"Physical memory" = "Physical memory";
+"Page size" = "Page size";
+
+/* MARK: Network detail (#30) */
+
+/* Section titles of the Network detail page */
+"Throughput" = "Throughput";
+"Totals" = "Totals";
+"Interfaces" = "Interfaces";
+"Wi-Fi" = "Wi-Fi";
+/* Network page: download and upload rates, chart series and stats rows */
+"Download" = "Download";
+"Upload" = "Upload";
+/* Network page: VoiceOver title of the download/upload chart */
+"Download and upload" = "Download and upload";
+/* Network page: byte totals counted since MacStats was opened, and since the Mac started up */
+"Since MacStats started" = "Since MacStats started";
+"Since boot" = "Since boot";
+/* Network page, VoiceOver: a row title, then download and upload amounts, e.g. "Since boot, download 2.1 gigabytes, upload 310 megabytes" */
+"%@, download %@, upload %@" = "%@, download %@, upload %@";
+/* Network page: an interface's current rates */
+"Now" = "Now";
+/* Network page: interface kinds */
+"Ethernet" = "Ethernet";
+"Other" = "Other";
+/* Network page: badge on the interface carrying the default route, and its VoiceOver form */
+"Primary" = "Primary";
+"primary" = "primary";
+/* Network page: local addresses and Ethernet link speed of an interface */
+"IPv4" = "IPv4";
+"IPv6" = "IPv6";
+"Link speed" = "Link speed";
+/* Network page: shown when no interface is in use */
+"No network connection" = "No network connection";
+"Interfaces appear here when this Mac is connected to a network." = "Interfaces appear here when this Mac is connected to a network.";
+/* Network page: Wi-Fi rows (network name only appears when macOS provides it without Location access) */
+"Network name" = "Network name";
+"Signal" = "Signal";
+"Noise" = "Noise";
+"Transmit rate" = "Transmit rate";
+"Channel" = "Channel";
+/* Wi-Fi signal and noise level, e.g. "-62 dBm", and its VoiceOver form */
+"%@ dBm" = "%@ dBm";
+"%@ decibel-milliwatts" = "%@ decibel-milliwatts";
+/* Wi-Fi bands */
+"2.4 GHz" = "2.4 GHz";
+"5 GHz" = "5 GHz";
+"6 GHz" = "6 GHz";
+/* Wi-Fi channel and its band, e.g. "36 (5 GHz)" */
+"%@ (%@)" = "%@ (%@)";
+/* Spoken bit-rate units, as in "1 gigabits per second" (link speed, Wi-Fi transmit rate) */
+"gigabits" = "gigabits";
+"megabits" = "megabits";
+"kilobits" = "kilobits";

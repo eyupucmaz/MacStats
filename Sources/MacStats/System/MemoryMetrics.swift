@@ -12,15 +12,34 @@ struct MemorySample {
 /// (wired + compressed) / total, the two components the kernel cannot evict on demand,
 /// which is what Activity Monitor's pressure graph rises with. Limitation: not the
 /// kernel's own pressure metric, so it is an approximation, not the exact same curve.
+/// The detail page names the level with the kernel's own reading instead
+/// (`MemoryPressureLevel`, from `kern.memorystatus_vm_pressure_level`).
 enum MemoryMetrics {
 
     /// Each mach_host_self() call adds a send-right reference that is never released,
     /// so the port is fetched once rather than on every tick.
     private static let host = mach_host_self()
 
+    /// The kernel's page size (16 KB on Apple silicon, 4 KB on Intel); every
+    /// `vm_statistics64` count is in these pages.
+    static var pageSize: UInt64 { UInt64(vm_kernel_page_size) }
+
     static func sample() -> MemorySample {
         let total = ProcessInfo.processInfo.physicalMemory
+        guard let stats = vmStatistics() else {
+            return MemorySample(used: 0, total: total, pressure: 0)
+        }
 
+        return derive(activePages: UInt64(stats.active_count),
+                      wiredPages: UInt64(stats.wire_count),
+                      compressorPages: UInt64(stats.compressor_page_count),
+                      pageSize: pageSize,
+                      total: total)
+    }
+
+    /// One `host_statistics64(HOST_VM_INFO64)` read; nil when the call fails.
+    /// Shared with the memory detail page's sampler.
+    static func vmStatistics() -> vm_statistics64_data_t? {
         var stats = vm_statistics64_data_t()
         var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64_data_t>.stride / MemoryLayout<integer_t>.stride)
         let result = withUnsafeMutablePointer(to: &stats) { pointer in
@@ -28,15 +47,7 @@ enum MemoryMetrics {
                 host_statistics64(host, HOST_VM_INFO64, $0, &count)
             }
         }
-        guard result == KERN_SUCCESS else {
-            return MemorySample(used: 0, total: total, pressure: 0)
-        }
-
-        return derive(activePages: UInt64(stats.active_count),
-                      wiredPages: UInt64(stats.wire_count),
-                      compressorPages: UInt64(stats.compressor_page_count),
-                      pageSize: UInt64(vm_kernel_page_size),
-                      total: total)
+        return result == KERN_SUCCESS ? stats : nil
     }
 
     /// Used and pressure from page counts; both are capped at `total`.

@@ -19,7 +19,6 @@
   forms such as %2$@ to reorder arguments, and %% for a literal percent sign.
 */
 
-
 /* MARK: Status item menu, main menu and About panel */
 
 "Settings…" = "Ayarlar…";
@@ -307,7 +306,6 @@
 "Details coming soon" = "Ayrıntılar yakında";
 "Charts and a breakdown of this number will appear here." = "Bu değerin grafikleri ve ayrıntılı dökümü burada görünecek.";
 
-
 /* MARK: Charts (#23) */
 
 /* Detail chart placeholder until at least two samples exist */
@@ -341,3 +339,216 @@
 "%@ revolutions per minute" = "dakikada %@ devir";
 "%@ degrees Celsius" = "%@ santigrat derece";
 "%@ watts" = "%@ vat";
+
+/* MARK: CPU detail (#25) */
+
+/* CPU page section titles */
+"Usage" = "Kullanım";
+"Cores" = "Çekirdekler";
+"Load Average" = "Yük Ortalaması";
+"Top Processes" = "En Yoğun İşlemler";
+"About This CPU" = "Bu İşlemci Hakkında";
+/* CPU time split: user processes, the system (kernel), and nothing running */
+"User" = "Kullanıcı";
+"Idle" = "Boşta";
+/* Stats row title under the CPU chart: user + system */
+"Total" = "Toplam";
+/* CPU core groups; macOS names Apple-silicon perf levels Performance, Efficiency or Super */
+"Performance cores" = "Performans çekirdekleri";
+"Efficiency cores" = "Verimlilik çekirdekleri";
+"Super cores" = "Süper çekirdekler";
+/* A perf level with a name macOS introduced later, e.g. "Turbo cores" */
+"%@ cores" = "%@ çekirdekleri";
+/* VoiceOver: one core's bar, e.g. "Core 7, 23 percent" */
+"Core %@, %@" = "Çekirdek %@, %@";
+/* VoiceOver: a core group with its average, e.g. "Efficiency cores, average 12.5 percent" */
+"%@, average %@" = "%@, ortalama %@";
+/* Load average columns: over 1, 5 and 15 minutes */
+"1 min" = "1 dk";
+"5 min" = "5 dk";
+"15 min" = "15 dk";
+/* VoiceOver: a load average column; the argument is a spoken range such as "5 minutes" */
+"Load average over %@" = "Son %@ yük ortalaması";
+/* Under the load averages; the argument is the number of logical cores */
+"Out of %@ cores; higher means work is waiting." = "%@ çekirdek üzerinden; daha yüksek değer işlerin beklediğini gösterir.";
+/* Under a process list when some processes belong to other users or are protected */
+"Showing processes you can inspect" = "İncelenebilen işlemler gösteriliyor";
+/* About This CPU rows */
+"Chip" = "Çip";
+"Uptime" = "Açık kalma süresi";
+"Thermal state" = "Isıl durum";
+/* macOS thermal states, from cool to throttling hard */
+"Nominal" = "Normal";
+"Fair" = "Orta";
+"Serious" = "Yüksek";
+"Critical" = "Kritik";
+/* Uptime, short: "3 d 4 h", "4 h 12 min", "12 min" */
+"%@ d %@ h" = "%@ g %@ sa";
+"%@ h %@ min" = "%@ sa %@ dk";
+"%@ min" = "%@ dk";
+/* Uptime, spoken */
+"%@ day" = "%@ gün";
+"%@ days" = "%@ gün";
+"%@ hours" = "%@ saat";
+
+/* MARK: Disk detail (#29) */
+
+/* Disk page section titles */
+"Startup Disk" = "Başlangıç Diski";
+"All Volumes" = "Tüm Birimler";
+"Disk Activity" = "Disk Etkinliği";
+"Processes by Disk I/O" = "Disk G/Ç'ye Göre İşlemler";
+/* Disk page headline: share of the startup disk in use, e.g. "61% used" */
+"%@%% used" = "%%%@ dolu";
+/* Free and total space, e.g. "194 GB free of 494 GB" */
+"%@ free of %@" = "%@ boş, toplam %@";
+/* Disk page: startup disk capacity breakdown */
+"Volume name" = "Birim adı";
+"Used space" = "Kullanılan alan";
+"Available space" = "Kullanılabilir alan";
+"Purgeable space" = "Temizlenebilir alan";
+"File system" = "Dosya sistemi";
+"FileVault" = "FileVault";
+"On" = "Açık";
+"Off" = "Kapalı";
+"macOS did not report the startup disk's capacity." = "macOS başlangıç diskinin kapasitesini bildirmedi.";
+/* How a volume is attached */
+"Internal" = "Dahili";
+"External" = "Harici";
+"Removable" = "Çıkarılabilir";
+/* VoiceOver: a volume row, e.g. "Macintosh HD, Internal, startup disk, 61 percent used, 194 gigabytes free of 494 gigabytes" */
+"startup disk" = "başlangıç diski";
+"%@ percent used, %@ free of %@" = "yüzde %@ dolu, boş alan %@, toplam %@";
+/* Disk activity chart series */
+"Read" = "Okuma";
+"Write" = "Yazma";
+/* Disk operations per second, e.g. "1250/s"; spoken form */
+"%@/s" = "%@/sn";
+"%@ per second" = "saniyede %@";
+"Read operations" = "Okuma işlemleri";
+"Write operations" = "Yazma işlemleri";
+/* Bytes read / written by the drives since the Mac started */
+"Read since startup" = "Açılıştan beri okunan";
+"Written since startup" = "Açılıştan beri yazılan";
+"macOS does not report read and write activity for this Mac's drives." = "macOS bu Mac'in sürücüleri için okuma ve yazma etkinliğini bildirmiyor.";
+/* Top processes by disk I/O; rates such as "1.2 MB/s" */
+"Read %@ · Write %@" = "Okuma %@ · Yazma %@";
+"%@, reading %@, writing %@" = "%@, okuma %@, yazma %@";
+"No process is reading or writing right now." = "Şu anda okuma ya da yazma yapan işlem yok.";
+"Disk I/O is shown only for processes MacStats can inspect." = "Disk G/Ç yalnızca MacStats'in inceleyebildiği işlemler için gösterilir.";
+/* Disk page: the drive behind the startup disk */
+"Drive model" = "Sürücü modeli";
+"Drive type" = "Sürücü türü";
+"Solid-state drive" = "Katı hal sürücüsü";
+"Hard disk drive" = "Sabit disk sürücüsü";
+"Connection" = "Bağlantı";
+"Firmware" = "Ürün yazılımı";
+
+/* MARK: Memory detail (#27) */
+
+/* Memory detail page: label of the used / total figure */
+"Used" = "Kullanılan";
+
+/* Memory detail page: section and chart titles */
+"Memory used" = "Kullanılan bellek";
+"Memory pressure" = "Bellek baskısı";
+"Breakdown" = "Dağılım";
+"Swap & paging" = "Takas ve sayfalama";
+"Top processes" = "En çok bellek kullanan işlemler";
+
+/* Memory pressure chart legend */
+"Pressure" = "Baskı";
+
+/* Memory pressure levels macOS reports */
+"Normal" = "Normal";
+"Warning" = "Uyarı";
+
+/* VoiceOver label of the colored pressure-level strip under the pressure chart */
+"Pressure level" = "Baskı düzeyi";
+
+/* VoiceOver: the pressure-level strip has no readings in the visible range */
+"No readings yet" = "Henüz ölçüm yok";
+
+/* Caption under the memory pressure chart */
+"The line is wired plus compressed memory as a share of RAM. The band is the level macOS reports, recorded while this page is open." = "Çizgi, kalıcı ve sıkıştırılmış belleğin RAM'e oranıdır. Şerit, macOS'un bildirdiği düzeydir ve bu sayfa açıkken kaydedilir.";
+
+/* Memory breakdown categories, as in Activity Monitor */
+"App memory" = "Uygulama belleği";
+"Wired" = "Kalıcı";
+"Compressed" = "Sıkıştırılmış";
+"Cached files" = "Önbellekteki dosyalar";
+"Free" = "Boş";
+
+/* Shown instead of the memory breakdown when the VM statistics query fails */
+"macOS did not report memory statistics." = "macOS bellek istatistiklerini bildirmedi.";
+
+/* Swap row; "Not in use" when macOS has not created a swap file */
+"Swap used" = "Kullanılan takas";
+"Not in use" = "Kullanılmıyor";
+
+/* VoiceOver: swap used, then swap total, e.g. "1.2 gigabytes, total 2 gigabytes" */
+"%@, total %@" = "%@, toplam %@";
+
+/* Paging activity per second */
+"Page-ins" = "Sayfa girişleri";
+"Page-outs" = "Sayfa çıkışları";
+"Swap-ins" = "Takas girişleri";
+"Swap-outs" = "Takas çıkışları";
+"Compressions" = "Sıkıştırmalar";
+"Decompressions" = "Sıkıştırma açmaları";
+
+/* Memory detail page: About section rows */
+"Physical memory" = "Fiziksel bellek";
+"Page size" = "Sayfa boyutu";
+
+/* MARK: Network detail (#30) */
+
+/* Section titles of the Network detail page */
+"Throughput" = "Aktarım hızı";
+"Totals" = "Toplamlar";
+"Interfaces" = "Arayüzler";
+"Wi-Fi" = "Wi-Fi";
+/* Network page: download and upload rates, chart series and stats rows */
+"Download" = "İndirme";
+"Upload" = "Yükleme";
+/* Network page: VoiceOver title of the download/upload chart */
+"Download and upload" = "İndirme ve yükleme";
+/* Network page: byte totals counted since MacStats was opened, and since the Mac started up */
+"Since MacStats started" = "MacStats açıldığından beri";
+"Since boot" = "Sistem açılışından beri";
+/* Network page, VoiceOver: a row title, then download and upload amounts, e.g. "Since boot, download 2.1 gigabytes, upload 310 megabytes" */
+"%@, download %@, upload %@" = "%@, indirme %@, yükleme %@";
+/* Network page: an interface's current rates */
+"Now" = "Şu an";
+/* Network page: interface kinds */
+"Ethernet" = "Ethernet";
+"Other" = "Diğer";
+/* Network page: badge on the interface carrying the default route, and its VoiceOver form */
+"Primary" = "Birincil";
+"primary" = "birincil";
+/* Network page: local addresses and Ethernet link speed of an interface */
+"IPv4" = "IPv4";
+"IPv6" = "IPv6";
+"Link speed" = "Bağlantı hızı";
+/* Network page: shown when no interface is in use */
+"No network connection" = "Ağ bağlantısı yok";
+"Interfaces appear here when this Mac is connected to a network." = "Bu Mac bir ağa bağlandığında arayüzler burada görünür.";
+/* Network page: Wi-Fi rows (network name only appears when macOS provides it without Location access) */
+"Network name" = "Ağ adı";
+"Signal" = "Sinyal";
+"Noise" = "Gürültü";
+"Transmit rate" = "Gönderim hızı";
+"Channel" = "Kanal";
+/* Wi-Fi signal and noise level, e.g. "-62 dBm", and its VoiceOver form */
+"%@ dBm" = "%@ dBm";
+"%@ decibel-milliwatts" = "%@ desibel-miliwatt";
+/* Wi-Fi bands */
+"2.4 GHz" = "2,4 GHz";
+"5 GHz" = "5 GHz";
+"6 GHz" = "6 GHz";
+/* Wi-Fi channel and its band, e.g. "36 (5 GHz)" */
+"%@ (%@)" = "%@ (%@)";
+/* Spoken bit-rate units, as in "1 gigabits per second" (link speed, Wi-Fi transmit rate) */
+"gigabits" = "gigabit";
+"megabits" = "megabit";
+"kilobits" = "kilobit";

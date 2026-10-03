@@ -69,7 +69,7 @@ struct CoreMetricSample: Equatable {
         emit(cpuUser, MetricSeriesID.cpuUser, .percent)
         emit(cpuSystem, MetricSeriesID.cpuSystem, .percent)
         emit(gpuUtilization, MetricSeriesID.gpuUtilization, .percent)
-        emit(memoryUsed, MetricSeriesID.memoryUsed, .bytes)
+        emit(memoryUsed, MetricSeriesID.memoryUsed, .memory)
         emit(memoryPressure, MetricSeriesID.memoryPressure, .percent)
         emit(batteryLevel, MetricSeriesID.batteryLevel, .percent)
         emit(diskUsed, MetricSeriesID.diskUsed, .bytes)

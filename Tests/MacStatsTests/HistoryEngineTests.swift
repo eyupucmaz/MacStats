@@ -90,7 +90,7 @@ final class HistoryEngineTests: XCTestCase {
             (MetricSeriesID.cpuUser, .percent, 7.5),
             (MetricSeriesID.cpuSystem, .percent, 2.5),
             (MetricSeriesID.gpuUtilization, .percent, 20),
-            (MetricSeriesID.memoryUsed, .bytes, 4_000),
+            (MetricSeriesID.memoryUsed, .memory, 4_000),
             (MetricSeriesID.memoryPressure, .percent, 30),
             (MetricSeriesID.batteryLevel, .percent, 80),
             (MetricSeriesID.diskUsed, .bytes, 300),
