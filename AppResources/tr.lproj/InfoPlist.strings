@@ -1,0 +1,12 @@
+/*
+  InfoPlist.strings (Turkish)
+  MacStats
+
+  Localized Info.plist values. macOS reads these from the app's own
+  Contents/Resources, not from the SwiftPM resource bundle, so
+  Scripts/build-app.sh copies AppResources/*.lproj there. Keep the keys in
+  step with Info.plist and with the other languages.
+*/
+
+/* Shown by macOS when the App Mixer asks for audio-capture permission */
+"NSAudioCaptureUsageDescription" = "MacStats, uygulama seslerini bu Mac'te denetlemek için sistem sesi yakalamayı yalnızca uygulama mikseri açıkken kullanır.";

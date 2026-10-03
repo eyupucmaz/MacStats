@@ -9,7 +9,9 @@ enum MenuBarMetric: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    /// Three characters keeps the segments visually aligned in the bar.
+    /// Three characters keeps the segments visually aligned in the bar. Not
+    /// localized on purpose: these are compact technical abbreviations, like the
+    /// unit symbols, and a translation would rarely fit in three characters.
     var label: String {
         switch self {
         case .cpu: return "CPU"
@@ -27,14 +29,14 @@ enum MenuBarMetric: String, CaseIterable, Identifiable {
     /// so every row reads the same way.
     var settingsTitle: String {
         switch self {
-        case .cpu: return "CPU Usage"
-        case .gpu: return "GPU Usage"
-        case .ram: return "Memory Usage"
-        case .disk: return "Disk Usage"
-        case .network: return "Network Traffic"
-        case .battery: return "Battery Level"
-        case .fan: return "Fan Speed"
-        case .temp: return "Temperature"
+        case .cpu: return L10n.string("CPU Usage")
+        case .gpu: return L10n.string("GPU Usage")
+        case .ram: return L10n.string("Memory Usage")
+        case .disk: return L10n.string("Disk Usage")
+        case .network: return L10n.string("Network Traffic")
+        case .battery: return L10n.string("Battery Level")
+        case .fan: return L10n.string("Fan Speed")
+        case .temp: return L10n.string("Temperature")
         }
     }
 }
@@ -104,7 +106,7 @@ enum MenuBarRenderer {
             return "↓\(ByteRate.compact(s.networkDownBytes, locale: locale)) "
                 + "↑\(ByteRate.compact(s.networkUpBytes, locale: locale))"
         case .battery:
-            return s.isBatteryAvailable ? "\(s.batteryLevel)%" : unavailable
+            return s.isBatteryAvailable ? MetricFormat.percent("\(s.batteryLevel)") : unavailable
         case .fan:
             // The RPM unit is dropped here; the popover spells it out.
             return s.isFanAvailable ? "\(s.fanRPM)" : unavailable

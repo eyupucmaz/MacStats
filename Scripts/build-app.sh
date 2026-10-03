@@ -13,6 +13,7 @@ CONTENTS_DIR="${APP_BUNDLE}/Contents"
 MACOS_DIR="${CONTENTS_DIR}/MacOS"
 RESOURCES_DIR="${CONTENTS_DIR}/Resources"
 ASSET_CATALOG="${REPO_ROOT}/Sources/${APP_NAME}/Resources/Assets.xcassets"
+APP_RESOURCES="${REPO_ROOT}/AppResources"
 SPM_RESOURCE_BUNDLE="${APP_NAME}_${APP_NAME}.bundle"
 MIN_MACOS_VERSION="13.0"
 
@@ -92,6 +93,14 @@ elif [ "${RELEASE_STRICT}" = 1 ]; then
 else
     warn "SwiftPM resource bundle not found: ${RESOURCE_BUNDLE}"
 fi
+
+# macOS reads localized Info.plist values (InfoPlist.strings) and the app's
+# language list from the main bundle, not from the SwiftPM resource bundle.
+info "Copying main-bundle localizations…"
+for lproj in "${APP_RESOURCES}"/*.lproj; do
+    [ -d "${lproj}" ] || die "no .lproj directories found in ${APP_RESOURCES}"
+    cp -R "${lproj}" "${RESOURCES_DIR}/"
+done
 
 # ---------------------------------------------------------------------------
 # 3. Compile the asset catalog.

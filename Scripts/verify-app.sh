@@ -60,6 +60,25 @@ BUILD_NUMBER="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "${PLIST}")"
 [ -f "${RESOURCES_DIR}/Assets.car" ] || die "Assets.car is missing"
 [ -f "${RESOURCES_DIR}/AppIcon.icns" ] || die "AppIcon.icns is missing"
 
+# Every language the app declares must ship its Info.plist strings (main bundle)
+# and its string table (SwiftPM resource bundle). SwiftPM's native build system
+# lays the resource bundle out flat; swiftbuild nests it in Contents/Resources.
+LOCALIZATIONS=()
+while LOCALIZATION="$(plutil -extract "CFBundleLocalizations.${#LOCALIZATIONS[@]}" raw -o - "${PLIST}" 2>/dev/null)"; do
+    LOCALIZATIONS+=("${LOCALIZATION}")
+done
+[ "${#LOCALIZATIONS[@]}" -ne 0 ] || die "Info.plist lists no CFBundleLocalizations"
+STRING_TABLES="${RESOURCES_DIR}/MacStats_MacStats.bundle"
+if [ -d "${STRING_TABLES}/Contents/Resources" ]; then
+    STRING_TABLES="${STRING_TABLES}/Contents/Resources"
+fi
+for LOCALIZATION in "${LOCALIZATIONS[@]}"; do
+    [ -f "${RESOURCES_DIR}/${LOCALIZATION}.lproj/InfoPlist.strings" ] \
+        || die "InfoPlist.strings is missing for localization '${LOCALIZATION}'"
+    [ -f "${STRING_TABLES}/${LOCALIZATION}.lproj/Localizable.strings" ] \
+        || die "Localizable.strings is missing for localization '${LOCALIZATION}'"
+done
+
 ACTUAL_ARCHS="$(normalize_arch_set "$(lipo -archs "${EXECUTABLE}")")"
 NORMALIZED_EXPECTED_ARCHS="$(normalize_arch_set "${EXPECTED_ARCHS}")"
 [ "${ACTUAL_ARCHS}" = "${NORMALIZED_EXPECTED_ARCHS}" ] || die "expected architectures '${NORMALIZED_EXPECTED_ARCHS}', found '${ACTUAL_ARCHS}'"

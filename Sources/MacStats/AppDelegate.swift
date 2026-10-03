@@ -5,6 +5,9 @@ import SwiftUI
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private static let warmUpSeconds = 2.0
+    /// Gives the new status item a moment to settle in the menu bar before the
+    /// first-run popover anchors to it.
+    private static let onboardingDelaySeconds = 0.5
 
     /// The popover tab last reported by `StatsView`; see `StatsPollingPolicy`.
     private var selectedTab: PopoverTab = .system
@@ -38,6 +41,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // (a no-op when the menu bar is showing live metrics).
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.warmUpSeconds) { [weak self] in
             self?.applyPollingPolicy()
+        }
+
+        // First launch only: open the popover once so its welcome hint is seen.
+        if Onboarding.shared.consumeAutoOpen() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.onboardingDelaySeconds) { [weak self] in
+                guard self?.popover?.isShown == false else { return }
+                self?.togglePopover()
+            }
         }
     }
 
@@ -155,18 +166,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func makeStatusMenu() -> NSMenu {
         let menu = NSMenu()
 
-        let settings = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        let settings = NSMenuItem(title: L10n.string("Settings…"), action: #selector(openSettings), keyEquivalent: ",")
         settings.keyEquivalentModifierMask = [.command]
         settings.target = self
         menu.addItem(settings)
 
-        let about = NSMenuItem(title: "About MacStats", action: #selector(showAbout), keyEquivalent: "")
+        let about = NSMenuItem(title: L10n.string("About MacStats"), action: #selector(showAbout), keyEquivalent: "")
         about.target = self
         menu.addItem(about)
 
         menu.addItem(.separator())
 
-        let quit = NSMenuItem(title: "Quit MacStats", action: #selector(quitApp), keyEquivalent: "q")
+        let quit = NSMenuItem(title: L10n.string("Quit MacStats"), action: #selector(quitApp), keyEquivalent: "q")
         quit.keyEquivalentModifierMask = [.command]
         quit.target = self
         menu.addItem(quit)
@@ -187,12 +198,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let appItem = NSMenuItem()
         let appMenu = NSMenu()
 
-        let settings = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        let settings = NSMenuItem(title: L10n.string("Settings…"), action: #selector(openSettings), keyEquivalent: ",")
         settings.target = self
         appMenu.addItem(settings)
         appMenu.addItem(.separator())
 
-        let quit = NSMenuItem(title: "Quit MacStats", action: #selector(quitApp), keyEquivalent: "q")
+        let quit = NSMenuItem(title: L10n.string("Quit MacStats"), action: #selector(quitApp), keyEquivalent: "q")
         quit.target = self
         appMenu.addItem(quit)
 
@@ -215,7 +226,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 backing: .buffered,
                 defer: false
             )
-            window.title = "MacStats Settings"
+            window.title = L10n.string("MacStats Settings")
             window.isReleasedWhenClosed = false
             window.contentViewController = NSHostingController(rootView: view)
             window.delegate = self
@@ -234,7 +245,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .applicationName: "MacStats",
             .applicationVersion: SettingsView.versionString,
             .credits: NSAttributedString(
-                string: "Menu bar system monitor.",
+                string: L10n.string("Menu bar system monitor."),
                 attributes: [.font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)]
             )
         ])

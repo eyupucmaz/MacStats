@@ -4,6 +4,7 @@ import SwiftUI
 struct StatsView: View {
     @EnvironmentObject var stats: StatsEngine
     @ObservedObject private var settings = AppSettings.shared
+    @ObservedObject private var onboarding = Onboarding.shared
     @State private var selectedTab: PopoverTab = .system
 
     /// One width for both tabs so switching does not resize the popover sideways;
@@ -20,9 +21,13 @@ struct StatsView: View {
         VStack(alignment: .leading, spacing: 10) {
             header
 
-            Picker("MacStats section", selection: $selectedTab) {
-                Text("System").tag(PopoverTab.system)
-                Text("Audio").tag(PopoverTab.audio)
+            if onboarding.isHintVisible {
+                OnboardingHint(onDismiss: { onboarding.dismissHint() })
+            }
+
+            Picker(L10n.string("MacStats section"), selection: $selectedTab) {
+                Text(L10n.string("System")).tag(PopoverTab.system)
+                Text(L10n.string("Audio")).tag(PopoverTab.audio)
             }
             .pickerStyle(.segmented)
 
@@ -49,7 +54,7 @@ struct StatsView: View {
             }
             .padding(.bottom, 8)
         } else {
-            Text("All stats are hidden. Enable some in Settings.")
+            Text(L10n.string("All stats are hidden. Enable some in Settings."))
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -71,13 +76,13 @@ struct StatsView: View {
                 Image(systemName: "gearshape")
             }
             .buttonStyle(.plain)
-            .help("Settings")
-            .accessibilityLabel("Open Settings")
+            .help(L10n.string("Settings"))
+            .accessibilityLabel(L10n.string("Open Settings"))
 
             MenuAnchorButton(action: onShowMenu)
                 .frame(width: 16, height: 16)
-                .help("More")
-                .accessibilityLabel("More actions")
+                .help(L10n.string("More"))
+                .accessibilityLabel(L10n.string("More actions"))
         }
     }
 
@@ -131,7 +136,7 @@ private struct MenuAnchorButton: NSViewRepresentable {
         button.bezelStyle = .inline
         button.isBordered = false
         button.imagePosition = .imageOnly
-        button.image = NSImage(systemSymbolName: "ellipsis.circle", accessibilityDescription: "More actions")
+        button.image = NSImage(systemSymbolName: "ellipsis.circle", accessibilityDescription: L10n.string("More actions"))
         button.contentTintColor = .secondaryLabelColor
         button.target = context.coordinator
         button.action = #selector(Coordinator.fire(_:))
