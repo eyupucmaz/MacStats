@@ -7,8 +7,10 @@ body:
   - type: markdown
     attributes:
       value: |
-        Describe the outcome you need. Fan-control requests remain roadmap
-        discussions and are not commitments for the public preview.
+        Describe the outcome you need. MacStats monitors your Mac and offers
+        optional audio controls; it never writes fan or SMC settings.
+        Fan-control requests remain roadmap discussions and are not
+        commitments for the public preview.
   - type: textarea
     id: problem
     attributes:
