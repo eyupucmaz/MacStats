@@ -29,9 +29,32 @@ body:
     id: macstats-version
     attributes:
       label: MacStats version
-      placeholder: "0.1.0"
+      description: The release version you downloaded, or the commit hash if you built from source.
+      placeholder: "0.2.0"
     validations:
       required: true
+  - type: dropdown
+    id: audio-capture-permission
+    attributes:
+      label: Audio-capture permission granted?
+      description: >-
+        Only for Audio tab or App Mixer issues. Check System Settings →
+        Privacy & Security → Screen & System Audio Recording.
+      options:
+        - Not applicable
+        - "Yes"
+        - "No"
+        - Not sure
+    validations:
+      required: false
+  - type: input
+    id: audio-output-device
+    attributes:
+      label: Audio output device
+      description: Only for audio issues. For example, built-in speakers, AirPods, or a USB interface.
+      placeholder: "MacBook Pro Speakers"
+    validations:
+      required: false
   - type: textarea
     id: observed-behavior
     attributes:

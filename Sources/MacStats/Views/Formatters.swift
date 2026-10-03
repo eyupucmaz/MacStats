@@ -1,0 +1,138 @@
+import Foundation
+
+/// Shared pieces of the per-kind formatters below. Every number goes through
+/// `decimal(_:digits:locale:)` so the decimal separator follows the user's locale.
+enum MetricFormat {
+    /// Shown wherever a reading is unavailable; never a fabricated "0".
+    static let unavailable = "—"
+
+    static func decimal(_ value: Double, digits: Int, locale: Locale) -> String {
+        let value = value.isFinite ? max(value, 0) : 0
+        return value.formatted(.number
+            .precision(.fractionLength(digits))
+            .rounded(rule: .toNearestOrAwayFromZero)
+            .grouping(.never)
+            .locale(locale))
+    }
+
+    /// e.g. "23.4%" / "23%".
+    static func percent(_ value: Double, digits: Int, locale: Locale) -> String {
+        decimal(value, digits: digits, locale: locale) + "%"
+    }
+
+    /// Scales a byte count into decimal (SI) units, the convention Finder uses.
+    /// One decimal below 10, none above, and the unit steps up once rounding reaches 1000,
+    /// so 999.96 KB reads "1.0 MB" rather than "1000 KB".
+    static func decimalBytes(_ bytes: Double, locale: Locale) -> (number: String, unit: ByteUnit) {
+        let bytes = bytes.isFinite ? max(bytes, 0) : 0
+        for unit in ByteUnit.allCases {
+            let value = bytes / unit.scale
+            let digits = unit == .byte || value >= 9.95 ? 0 : 1
+            let step = digits == 0 ? 1.0 : 10.0
+            let rounded = (value * step).rounded() / step
+            if rounded < 1000 || unit == ByteUnit.allCases.last {
+                return (decimal(value, digits: digits, locale: locale), unit)
+            }
+        }
+        return ("0", .byte)
+    }
+
+    enum ByteUnit: CaseIterable {
+        case byte, kilo, mega, giga, tera
+
+        var scale: Double {
+            switch self {
+            case .byte: return 1
+            case .kilo: return 1e3
+            case .mega: return 1e6
+            case .giga: return 1e9
+            case .tera: return 1e12
+            }
+        }
+
+        var symbol: String {
+            switch self {
+            case .byte: return "B"
+            case .kilo: return "KB"
+            case .mega: return "MB"
+            case .giga: return "GB"
+            case .tera: return "TB"
+            }
+        }
+
+        var spoken: String {
+            switch self {
+            case .byte: return "bytes"
+            case .kilo: return "kilobytes"
+            case .mega: return "megabytes"
+            case .giga: return "gigabytes"
+            case .tera: return "terabytes"
+            }
+        }
+    }
+}
+
+/// RAM in binary units labelled "GB", as Activity Monitor and About This Mac do
+/// (16 GiB of RAM is sold and shown as "16 GB").
+enum MemorySize {
+    private static let gibibyte = 1_073_741_824.0
+
+    /// Card form, e.g. "8.2/16 GB".
+    static func usedOfTotal(_ used: UInt64, _ total: UInt64, locale: Locale = .autoupdatingCurrent) -> String {
+        "\(gigabytes(used, locale))/\(gigabytes(total, locale, digits: 0)) GB"
+    }
+
+    /// Menu bar form, e.g. "8.2G".
+    static func compact(_ bytes: UInt64, locale: Locale = .autoupdatingCurrent) -> String {
+        gigabytes(bytes, locale) + "G"
+    }
+
+    /// Spelled-out form for VoiceOver.
+    static func spoken(used: UInt64, total: UInt64, locale: Locale = .autoupdatingCurrent) -> String {
+        "\(gigabytes(used, locale)) of \(gigabytes(total, locale, digits: 0)) gigabytes used"
+    }
+
+    /// One decimal below 100 GB; above that the tenth is noise.
+    private static func gigabytes(_ bytes: UInt64, _ locale: Locale, digits: Int? = nil) -> String {
+        let value = Double(bytes) / gibibyte
+        return MetricFormat.decimal(value, digits: digits ?? (value < 99.95 ? 1 : 0), locale: locale)
+    }
+}
+
+/// Storage sizes in decimal units, matching Finder and About This Mac.
+enum DiskSize {
+    /// e.g. "820 MB", "9.7 GB", "245 GB", "1.2 TB".
+    static func short(_ bytes: UInt64, locale: Locale = .autoupdatingCurrent) -> String {
+        let scaled = MetricFormat.decimalBytes(Double(bytes), locale: locale)
+        return "\(scaled.number) \(scaled.unit.symbol)"
+    }
+
+    /// Spelled-out form for VoiceOver.
+    static func spoken(_ bytes: UInt64, locale: Locale = .autoupdatingCurrent) -> String {
+        let scaled = MetricFormat.decimalBytes(Double(bytes), locale: locale)
+        return "\(scaled.number) \(scaled.unit.spoken)"
+    }
+}
+
+/// Network throughput in decimal units, the networking convention and the same
+/// units `DiskSize` uses. Sub-megabyte rates must not collapse to "0".
+enum ByteRate {
+    /// Card form, e.g. "0 B/s", "812 KB/s", "1.2 MB/s".
+    static func short(_ bytesPerSecond: Double, locale: Locale = .autoupdatingCurrent) -> String {
+        let scaled = MetricFormat.decimalBytes(bytesPerSecond, locale: locale)
+        return "\(scaled.number) \(scaled.unit.symbol)/s"
+    }
+
+    /// Menu bar form, e.g. "812K", "1.2M": no space, no "B/s" — the menu bar pays
+    /// for every point of width.
+    static func compact(_ bytesPerSecond: Double, locale: Locale = .autoupdatingCurrent) -> String {
+        let scaled = MetricFormat.decimalBytes(bytesPerSecond, locale: locale)
+        return scaled.number + String(scaled.unit.symbol.prefix(1))
+    }
+
+    /// Spelled-out form for VoiceOver.
+    static func spoken(_ bytesPerSecond: Double, locale: Locale = .autoupdatingCurrent) -> String {
+        let scaled = MetricFormat.decimalBytes(bytesPerSecond, locale: locale)
+        return "\(scaled.number) \(scaled.unit.spoken) per second"
+    }
+}

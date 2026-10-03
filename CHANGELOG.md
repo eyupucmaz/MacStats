@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Audio tab in the popover: choose the default output and input device and set
+  the output device's volume and mute.
+- Per-app App Mixer to adjust or mute the volume of individual apps (macOS 14.2
+  or later). It is off by default and asks for system audio-capture permission
+  when enabled; audio is processed locally and never recorded, stored, or sent.
+
+### Changed
+
+- The Disk metric now shows startup-volume capacity (percent used and free
+  space, in decimal GB like Finder) instead of read/write throughput.
+- The `disk` menu bar item now shows percent used (for example, `DSK 97%`)
+  instead of throughput.
+- Building from source now requires Xcode 15.1 or later (macOS 14.2 SDK).
+
 ## [0.1.0] - 2026-09-04
 
 ### Added

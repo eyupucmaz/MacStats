@@ -12,6 +12,9 @@ struct CPUSample {
 /// returns nil; ticks are 32-bit and wrap, which the &- deltas absorb.
 final class CPUMetrics {
 
+    /// Each mach_host_self() call adds a send-right reference that is never released,
+    /// so the port is fetched once rather than on every tick.
+    private let host = mach_host_self()
     private var previousTicks: [UInt32]?
     private(set) var coreCount: Int = 0
 
@@ -21,7 +24,7 @@ final class CPUMetrics {
         var info: processor_info_array_t?
         var infoCount: mach_msg_type_number_t = 0
 
-        let result = host_processor_info(mach_host_self(),
+        let result = host_processor_info(host,
                                          PROCESSOR_CPU_LOAD_INFO,
                                          &cpuCount,
                                          &info,

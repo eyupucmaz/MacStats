@@ -2,7 +2,8 @@
 
 SWIFT ?= swift
 APP_BUNDLE := dist/MacStats.app
-VERSION ?= 0.1.0
+# Release version comes from Info.plist so the Makefile never drifts from the bundle.
+VERSION ?= $(shell /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Info.plist)
 BUILD_NUMBER ?= 1
 DMG := dist/MacStats-$(VERSION)-universal.dmg
 

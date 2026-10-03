@@ -11,6 +11,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var pausesPollingWhenHidden: Bool { !AppSettings.shared.showsMetricsInMenuBar }
 
     private var statusItem: NSStatusItem?
+    /// The title currently drawn in the status item; nil while it shows the icon,
+    /// which is what `installStatusItem()` starts with.
+    private var renderedTitle: String?
     private var popover: NSPopover?
     private var settingsWindow: NSWindow?
     private var hasTornDown = false
@@ -69,28 +72,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Redraws the status item from the latest sample and keeps the polling
     /// policy in step with the menu bar selection.
     private func observeStats() {
-        StatsEngine.shared.$lastSampleAt
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.updateStatusItem() }
+        // The engine publishes on the main thread, so no extra hop. `@Published`
+        // emits before the property is set, hence the value is passed along.
+        StatsEngine.shared.$snapshot
+            .sink { [weak self] snapshot in self?.updateStatusItem(snapshot) }
             .store(in: &cancellables)
 
         AppSettings.shared.$menuBarItems
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
-                self?.updateStatusItem()
+                self?.updateStatusItem(StatsEngine.shared.snapshot)
                 self?.applyPollingPolicy()
             }
             .store(in: &cancellables)
-
-        updateStatusItem()
     }
 
-    private func updateStatusItem() {
+    /// Rebuilds the image and accessibility label only when the text changes — at a
+    /// 1 s interval most ticks leave a rounded "CPU 4%" untouched.
+    private func updateStatusItem(_ snapshot: StatsSnapshot) {
         guard let button = statusItem?.button else { return }
-        let metrics = AppSettings.shared.menuBarMetrics
-        let snapshot = MenuBarSnapshot(engine: StatsEngine.shared)
+        let title = MenuBarRenderer.title(AppSettings.shared.menuBarMetrics, snapshot)
+        guard title != renderedTitle else { return }
+        renderedTitle = title
 
-        if let title = MenuBarRenderer.title(metrics, snapshot) {
+        if let title {
             button.image = MenuBarRenderer.image(title: title)
             button.setAccessibilityLabel("MacStats \(title)")
         } else {
@@ -208,7 +213,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if settingsWindow == nil {
             let view = SettingsView(onDone: { [weak self] in self?.settingsWindow?.performClose(nil) })
-                .environmentObject(StatsEngine.shared)
 
             let window = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 420, height: 520),
@@ -248,6 +252,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Polling
 
+    /// `setUpdateInterval` is a no-op when the interval is unchanged, so this does not
+    /// restart the timer on every popover open.
     private func resumePolling() {
         StatsEngine.shared.setUpdateInterval(AppSettings.shared.updateInterval)
         StatsEngine.shared.start()

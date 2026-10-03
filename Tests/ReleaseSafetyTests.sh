@@ -1,4 +1,6 @@
 #!/bin/bash
+# Literal workflow snippets and generated probe scripts are intentionally single-quoted.
+# shellcheck disable=SC2016
 
 set -euo pipefail
 
@@ -40,7 +42,10 @@ forbid_literal() {
 
 test_release_workflow_policy() {
     local workflow='.github/workflows/release.yml'
+    local release_action='softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3 (Node 24)'
 
+    require_literal "${workflow}" "${release_action}" \
+        'release action is pinned to the verified Node 24 commit'
     require_literal "${workflow}" 'GH_TOKEN: ${{ github.token }}' \
         'release lookup receives the Actions token'
     require_literal "${workflow}" 'gh api --silent "repos/${GITHUB_REPOSITORY}"' \
@@ -57,8 +62,18 @@ test_release_workflow_policy() {
         'generated release notes remain enabled'
     require_literal "${workflow}" 'body: |' \
         'release publication has an explicit body'
-    require_literal "${workflow}" 'monitoring-only' \
-        'release body discloses monitoring-only scope'
+    require_literal "${workflow}" 'there are no SMC or fan writes' \
+        'release body discloses that MacStats never writes to the SMC or fans'
+    require_literal "${workflow}" 'does not control fans' \
+        'release body discloses that fan control is not included'
+    require_literal "${workflow}" 'App Mixer' \
+        'release body names the App Mixer'
+    require_literal "${workflow}" 'asks for audio-capture permission' \
+        'release body discloses the App Mixer audio-capture permission prompt'
+    require_literal "${workflow}" 'macOS 14.2 or later' \
+        'release body discloses the App Mixer macOS requirement'
+    forbid_literal "${workflow}" 'is monitoring-only' \
+        'release body does not claim the app is monitoring-only'
     require_literal "${workflow}" 'ad-hoc signed and is not notarized' \
         'release body discloses signing and notarization status'
     require_literal "${workflow}" 'drag `MacStats.app` to Applications' \
@@ -67,8 +82,29 @@ test_release_workflow_policy() {
         'release body includes the Gatekeeper Control-click path'
     require_literal "${workflow}" 'Open Anyway' \
         'release body includes the Gatekeeper Open Anyway path'
-    require_literal "${workflow}" 'shasum -a 256 -c' \
-        'release body includes checksum verification'
+    require_literal "${workflow}" 'shasum -a 256 -c MacStats-${{ env.RELEASE_VERSION }}-universal.dmg.sha256' \
+        'release body derives the checksum filename from the release version'
+    require_literal "${workflow}" 'RELEASE_VERSION: ${{ needs.build.outputs.version }}' \
+        'publish job takes the release version from the validated tag'
+    require_literal "${workflow}" 'git merge-base --is-ancestor "${tag_commit}" origin/main' \
+        'release tag must be an ancestor of origin/main'
+    forbid_literal "${workflow}" '0.1.0' \
+        'release workflow does not hard-code a release version'
+    if /usr/bin/awk '
+        /^permissions:/ { top = 1; next }
+        top && /^[^ ]/ { top = 0 }
+        top && /contents: write/ { found = 1 }
+        END { exit !found }
+    ' "${REPO_ROOT}/${workflow}"; then
+        fail 'release workflow does not grant contents: write workflow-wide'
+    else
+        pass 'release workflow does not grant contents: write workflow-wide'
+    fi
+    if [ "$(/usr/bin/grep -c 'contents: write' "${REPO_ROOT}/${workflow}")" -eq 1 ]; then
+        pass 'exactly one release job requests contents: write'
+    else
+        fail 'exactly one release job requests contents: write'
+    fi
     forbid_literal "${workflow}" 'gh release view' \
         'release lookup does not treat every gh release view failure as absence'
 }
@@ -90,19 +126,50 @@ test_documented_shell_validation() {
     done
 
     require_literal 'README.md' \
-        'https://github.com/eyupucmaz/MacStats/releases/tag/v0.1.0' \
-        'README links directly to the v0.1.0 prerelease'
-    require_literal 'docs/superpowers/plans/2026-09-04-public-preview-release.md' \
-        'https://github.com/eyupucmaz/MacStats/releases/tag/v0.1.0' \
-        'implementation plan requires the fixed preview tag URL'
+        'https://github.com/eyupucmaz/MacStats/releases' \
+        'README links to the GitHub releases'
+}
+
+test_version_comes_from_info_plist() {
+    local file
+
+    for file in '.github/workflows/ci.yml' 'Makefile'; do
+        require_literal "${file}" "PlistBuddy -c 'Print :CFBundleShortVersionString' Info.plist" \
+            "${file} reads the release version from Info.plist"
+        forbid_literal "${file}" '0.1.0' \
+            "${file} does not hard-code a release version"
+    done
+}
+
+test_ci_hardening() {
+    local file
+
+    require_literal '.github/workflows/ci.yml' 'shellcheck Scripts/*.sh Tests/*.sh' \
+        'CI runs shellcheck over every release and test script'
+    for file in '.github/workflows/ci.yml' '.github/workflows/release.yml'; do
+        require_literal "${file}" 'sudo xcode-select -s "${XCODE_APP}/Contents/Developer"' \
+            "${file} pins the Xcode toolchain"
+        require_literal "${file}" 'swift --version' \
+            "${file} logs the Swift toolchain version"
+        require_literal "${file}" 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1 (Node 24)' \
+            "${file} pins upload-artifact to the verified Node 24 commit"
+    done
+}
+
+next_minor_version() {
+    local major minor
+    IFS=. read -r major minor _ <<< "$1"
+    printf '%s.%s.0\n' "${major}" "$((minor + 1))"
 }
 
 test_strict_source_version_validation() {
-    local probe_root fake_bin swift_log output status
+    local probe_root fake_bin swift_log output status source_version next_version
     probe_root="${TEST_ROOT}/build-probe"
     fake_bin="${probe_root}/fake-bin"
     swift_log="${probe_root}/swift.log"
     output="${probe_root}/output.log"
+    source_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "${REPO_ROOT}/Info.plist")"
+    next_version="$(next_minor_version "${source_version}")"
 
     mkdir -p "${probe_root}/Scripts" "${fake_bin}"
     cp "${REPO_ROOT}/Scripts/build-app.sh" "${probe_root}/Scripts/build-app.sh"
@@ -116,7 +183,7 @@ test_strict_source_version_validation() {
 
     : > "${swift_log}"
     if PATH="${fake_bin}:${PATH}" MACSTATS_SWIFT_LOG="${swift_log}" \
-        APP_VERSION=0.1.0 BUILD_NUMBER=1 RELEASE_STRICT=1 \
+        APP_VERSION="${source_version}" BUILD_NUMBER=1 RELEASE_STRICT=1 \
         /bin/bash "${probe_root}/Scripts/build-app.sh" > "${output}" 2>&1
     then
         status=0
@@ -124,14 +191,14 @@ test_strict_source_version_validation() {
         status=$?
     fi
     if [ "${status}" -eq 89 ] && [ -s "${swift_log}" ]; then
-        pass 'strict source version 0.1.0 is accepted before compilation'
+        pass "strict source version ${source_version} from Info.plist is accepted before compilation"
     else
-        fail 'strict source version 0.1.0 is accepted before compilation'
+        fail "strict source version ${source_version} from Info.plist is accepted before compilation"
     fi
 
     : > "${swift_log}"
     if PATH="${fake_bin}:${PATH}" MACSTATS_SWIFT_LOG="${swift_log}" \
-        APP_VERSION=0.2.0 BUILD_NUMBER=1 RELEASE_STRICT=1 \
+        APP_VERSION="${next_version}" BUILD_NUMBER=1 RELEASE_STRICT=1 \
         /bin/bash "${probe_root}/Scripts/build-app.sh" > "${output}" 2>&1
     then
         status=0
@@ -139,17 +206,17 @@ test_strict_source_version_validation() {
         status=$?
     fi
     if [ "${status}" -ne 0 ] && [ ! -s "${swift_log}" ] && \
-        /usr/bin/grep -Fq 'must exactly match source version 0.1.0' "${output}"; then
-        pass 'strict requested/source version mismatch fails before swift build'
+        /usr/bin/grep -Fq "must exactly match source version ${source_version}" "${output}"; then
+        pass "strict requested version ${next_version} is rejected before swift build"
     else
-        fail 'strict requested/source version mismatch fails before swift build'
+        fail "strict requested version ${next_version} is rejected before swift build"
     fi
 
-    /usr/libexec/PlistBuddy -c 'Set :CFBundleShortVersionString 00.1.0' \
+    /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 0${source_version}" \
         "${probe_root}/Info.plist"
     : > "${swift_log}"
     if PATH="${fake_bin}:${PATH}" MACSTATS_SWIFT_LOG="${swift_log}" \
-        APP_VERSION=0.1.0 BUILD_NUMBER=1 RELEASE_STRICT=1 \
+        APP_VERSION="${source_version}" BUILD_NUMBER=1 RELEASE_STRICT=1 \
         /bin/bash "${probe_root}/Scripts/build-app.sh" > "${output}" 2>&1
     then
         status=0
@@ -261,6 +328,8 @@ trap 'rm -rf -- "${TEST_ROOT}"' EXIT
 
 test_release_workflow_policy
 test_documented_shell_validation
+test_version_comes_from_info_plist
+test_ci_hardening
 test_strict_source_version_validation
 test_detach_failure_handling
 

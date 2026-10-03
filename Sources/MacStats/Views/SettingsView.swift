@@ -2,7 +2,6 @@ import AppKit
 import SwiftUI
 
 struct SettingsView: View {
-    @EnvironmentObject var stats: StatsEngine
     @ObservedObject private var settings = AppSettings.shared
 
     /// Closes the hosting `NSWindow`; `@Environment(\.dismiss)` does nothing here.
@@ -118,5 +117,4 @@ struct SettingsView: View {
 
 #Preview {
     SettingsView()
-        .environmentObject(StatsEngine.shared)
 }

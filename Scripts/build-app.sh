@@ -56,7 +56,9 @@ fi
 if [ "${ARCHS}" = 'arm64 x86_64' ]; then
     info "Building ${APP_NAME} (${CONFIGURATION}, Universal 2)…"
     swift build -c "${CONFIGURATION}" --arch arm64 --arch x86_64
-    PRODUCT_DIR="${REPO_ROOT}/.build/apple/Products/Release"
+    # Ask SwiftPM for the output directory: it moved from .build/apple/ to .build/out/
+    # in newer toolchains.
+    PRODUCT_DIR="$(swift build -c "${CONFIGURATION}" --arch arm64 --arch x86_64 --show-bin-path)"
 else
     info "Building ${APP_NAME} (${CONFIGURATION}, ${ARCHS})…"
     swift build -c "${CONFIGURATION}" --arch "${ARCHS}"

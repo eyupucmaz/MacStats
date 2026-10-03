@@ -59,8 +59,7 @@ hdiutil create -ov -format UDZO -fs HFS+ -volname "MacStats ${VERSION}" \
 
 (
     cd "${DIST_DIR}"
-    shasum -a 256 "MacStats-${VERSION}-universal.dmg" \
-        > "MacStats-${VERSION}-universal.dmg.sha256"
+    shasum -a 256 "${DMG_NAME}" > "${CHECKSUM_PATH}"
 )
 
-printf 'Packaged: %s\n' "${DMG_PATH}"
+printf 'Packaged: %s\nChecksum: %s\n' "${DMG_PATH}" "${CHECKSUM_PATH}"

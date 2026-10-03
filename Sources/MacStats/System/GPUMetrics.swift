@@ -1,8 +1,9 @@
 import Foundation
 import IOKit
 
-/// GPU utilization from the IOAccelerator (Apple Silicon: AGXAccelerator) IORegistry
-/// node's "PerformanceStatistics" dictionary. Limitation: the keys are private and vary
+/// GPU utilization from the IOAccelerator IORegistry node's "PerformanceStatistics"
+/// dictionary. Class matching includes subclasses, so this also finds Apple Silicon's
+/// AGXAccelerator. Limitation: the keys are private and vary
 /// by driver; when none of them is present there is no public alternative, so the caller
 /// gets nil rather than a synthesized number.
 enum GPUMetrics {
@@ -12,14 +13,7 @@ enum GPUMetrics {
 
     /// Highest utilization across accelerators, or nil when nothing is readable.
     static func sample() -> Double? {
-        for className in ["IOAccelerator", "AGXAccelerator"] {
-            if let value = utilization(matching: className) { return value }
-        }
-        return nil
-    }
-
-    private static func utilization(matching className: String) -> Double? {
-        guard let matching = IOServiceMatching(className) else { return nil }
+        guard let matching = IOServiceMatching("IOAccelerator") else { return nil }
         var iterator: io_iterator_t = 0
         guard IOServiceGetMatchingServices(kIOMainPortDefault, matching, &iterator) == KERN_SUCCESS else { return nil }
         defer { IOObjectRelease(iterator) }
