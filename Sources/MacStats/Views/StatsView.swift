@@ -4,6 +4,7 @@ import SwiftUI
 struct StatsView: View {
     @EnvironmentObject var stats: StatsEngine
     @ObservedObject private var settings = AppSettings.shared
+    @ObservedObject private var onboarding = Onboarding.shared
     @State private var selectedTab: PopoverTab = .system
 
     /// One width for both tabs so switching does not resize the popover sideways;
@@ -19,6 +20,10 @@ struct StatsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             header
+
+            if onboarding.isHintVisible {
+                OnboardingHint(onDismiss: { onboarding.dismissHint() })
+            }
 
             Picker(L10n.string("MacStats section"), selection: $selectedTab) {
                 Text(L10n.string("System")).tag(PopoverTab.system)

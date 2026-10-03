@@ -48,6 +48,16 @@
 /* VoiceOver label of the ⋯ button */
 "More actions" = "More actions";
 
+/* MARK: First-run hint at the top of the popover */
+
+"Welcome to MacStats" = "Welcome to MacStats";
+/* Button that dismisses the hint for good */
+"Got It" = "Got It";
+"Click the MacStats item in the menu bar to open or close this panel." = "Click the MacStats item in the menu bar to open or close this panel.";
+"Use the tabs below to switch between System stats and Audio controls." = "Use the tabs below to switch between System stats and Audio controls.";
+"Click the gear to choose which cards and menu bar metrics to show." = "Click the gear to choose which cards and menu bar metrics to show.";
+"Right-click the menu bar item, or click ⋯, for Settings, About and Quit." = "Right-click the menu bar item, or click ⋯, for Settings, About and Quit.";
+
 /* MARK: Stat card titles. CPU, GPU and RAM stay as they are in Turkish. */
 
 "CPU" = "CPU";

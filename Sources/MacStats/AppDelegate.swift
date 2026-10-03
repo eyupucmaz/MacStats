@@ -5,6 +5,9 @@ import SwiftUI
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private static let warmUpSeconds = 2.0
+    /// Gives the new status item a moment to settle in the menu bar before the
+    /// first-run popover anchors to it.
+    private static let onboardingDelaySeconds = 0.5
 
     /// The popover tab last reported by `StatsView`; see `StatsPollingPolicy`.
     private var selectedTab: PopoverTab = .system
@@ -38,6 +41,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // (a no-op when the menu bar is showing live metrics).
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.warmUpSeconds) { [weak self] in
             self?.applyPollingPolicy()
+        }
+
+        // First launch only: open the popover once so its welcome hint is seen.
+        if Onboarding.shared.consumeAutoOpen() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.onboardingDelaySeconds) { [weak self] in
+                guard self?.popover?.isShown == false else { return }
+                self?.togglePopover()
+            }
         }
     }
 

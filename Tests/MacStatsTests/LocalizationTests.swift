@@ -120,6 +120,8 @@ final class LocalizationTests: XCTestCase {
             XCTAssertEqual(AudioTabPresentation.muteLabel(for: "Safari"), "Safari sesini kapat")
             XCTAssertEqual(LaunchAtLogin.Failure.system("Hata").errorDescription,
                            "Oturum açılışında başlatma ayarı değiştirilemedi: Hata")
+            XCTAssertEqual(OnboardingHint.title, "MacStats'e Hoş Geldiniz")
+            XCTAssertEqual(OnboardingHint.tips.count, 4)
         }
     }
 
