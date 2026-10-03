@@ -408,9 +408,9 @@
 "Available space" = "Kullanılabilir alan";
 "Purgeable space" = "Temizlenebilir alan";
 "File system" = "Dosya sistemi";
-"Encryption" = "Şifreleme";
-"Encrypted" = "Şifreli";
-"Not encrypted" = "Şifreli değil";
+"FileVault" = "FileVault";
+"On" = "Açık";
+"Off" = "Kapalı";
 "macOS did not report the startup disk's capacity." = "macOS başlangıç diskinin kapasitesini bildirmedi.";
 /* How a volume is attached */
 "Internal" = "Dahili";

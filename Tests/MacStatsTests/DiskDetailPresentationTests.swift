@@ -57,8 +57,8 @@ final class DiskDetailPresentationTests: XCTestCase {
         L10n.$language.withValue("en") {
             let rows = DiskDetailPresentation.capacityRows(volume(), locale: english)
             XCTAssertEqual(rows.map(\.label), ["Volume name", "Used space", "Purgeable space", "Available space",
-                                               "File system", "Encryption"])
-            XCTAssertEqual(rows.map(\.value), ["Macintosh HD", "410 GB", "10 GB", "80 GB", "APFS", "Encrypted"])
+                                               "File system", "FileVault"])
+            XCTAssertEqual(rows.map(\.value), ["Macintosh HD", "410 GB", "10 GB", "80 GB", "APFS", "On"])
             XCTAssertEqual(rows.map(\.part), [nil, .used, .purgeable, .available, nil, nil])
             XCTAssertEqual(rows[1].accessibility, "Used space, 410 gigabytes")
         }
@@ -77,8 +77,8 @@ final class DiskDetailPresentationTests: XCTestCase {
         L10n.$language.withValue("tr") {
             let rows = DiskDetailPresentation.capacityRows(volume(encrypted: false), locale: turkish)
             XCTAssertEqual(rows.map(\.label), ["Birim adı", "Kullanılan alan", "Temizlenebilir alan",
-                                               "Kullanılabilir alan", "Dosya sistemi", "Şifreleme"])
-            XCTAssertEqual(rows.last?.value, "Şifreli değil")
+                                               "Kullanılabilir alan", "Dosya sistemi", "FileVault"])
+            XCTAssertEqual(rows.last?.value, "Kapalı")
         }
     }
 

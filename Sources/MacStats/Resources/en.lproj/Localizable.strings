@@ -408,9 +408,9 @@
 "Available space" = "Available space";
 "Purgeable space" = "Purgeable space";
 "File system" = "File system";
-"Encryption" = "Encryption";
-"Encrypted" = "Encrypted";
-"Not encrypted" = "Not encrypted";
+"FileVault" = "FileVault";
+"On" = "On";
+"Off" = "Off";
 "macOS did not report the startup disk's capacity." = "macOS did not report the startup disk's capacity.";
 /* How a volume is attached */
 "Internal" = "Internal";

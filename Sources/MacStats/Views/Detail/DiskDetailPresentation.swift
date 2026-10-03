@@ -89,9 +89,11 @@ enum DiskDetailPresentation {
         if let format = volume.formatDescription {
             rows.append(DiskDetailRow(L10n.string("File system"), format))
         }
+        // On the startup volume this flag tracks FileVault. Apple-silicon and T2
+        // SSDs are always hardware-encrypted, so "Not encrypted" would mislead.
         if let encrypted = volume.isEncrypted {
-            rows.append(DiskDetailRow(L10n.string("Encryption"),
-                                      encrypted ? L10n.string("Encrypted") : L10n.string("Not encrypted")))
+            rows.append(DiskDetailRow(L10n.string("FileVault"),
+                                      encrypted ? L10n.string("On") : L10n.string("Off")))
         }
         return rows
     }
