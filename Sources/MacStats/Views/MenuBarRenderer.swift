@@ -38,84 +38,27 @@ enum MenuBarMetric: String, CaseIterable, Identifiable {
     }
 }
 
-/// An immutable copy of the values the menu bar draws, so rendering is a pure
-/// function of its input and can be tested without a live `StatsEngine`.
-struct MenuBarSnapshot {
-    var cpuUsage: Double = 0
-    var gpuUsage: Double = 0
-    var memoryUsed: UInt64 = 0
-    var memoryTotal: UInt64 = 0
-    var diskUsedBytes: UInt64 = 0
-    var diskTotalBytes: UInt64 = 0
-    var networkDownBytes: Double = 0
-    var networkUpBytes: Double = 0
-    var batteryLevel: Int = 0
-    var batteryState: String = "Unknown"
-    var fanRPM: Int = 0
-    var isFanAvailable: Bool = false
-    var temperature: Double = 0
-    var isTemperatureAvailable: Bool = false
-
-    init(cpuUsage: Double = 0, gpuUsage: Double = 0,
-         memoryUsed: UInt64 = 0, memoryTotal: UInt64 = 0,
-         diskUsedBytes: UInt64 = 0, diskTotalBytes: UInt64 = 0,
-         networkDownBytes: Double = 0, networkUpBytes: Double = 0,
-         batteryLevel: Int = 0, batteryState: String = "Unknown",
-         fanRPM: Int = 0, isFanAvailable: Bool = false,
-         temperature: Double = 0, isTemperatureAvailable: Bool = false) {
-        self.cpuUsage = cpuUsage
-        self.gpuUsage = gpuUsage
-        self.memoryUsed = memoryUsed
-        self.memoryTotal = memoryTotal
-        self.diskUsedBytes = diskUsedBytes
-        self.diskTotalBytes = diskTotalBytes
-        self.networkDownBytes = networkDownBytes
-        self.networkUpBytes = networkUpBytes
-        self.batteryLevel = batteryLevel
-        self.batteryState = batteryState
-        self.fanRPM = fanRPM
-        self.isFanAvailable = isFanAvailable
-        self.temperature = temperature
-        self.isTemperatureAvailable = isTemperatureAvailable
-    }
-
-    /// Call on the main thread — `StatsEngine` publishes there.
-    init(engine: StatsEngine) {
-        self.init(cpuUsage: engine.cpuUsage,
-                  gpuUsage: engine.gpuUsage,
-                  memoryUsed: engine.memoryUsed,
-                  memoryTotal: engine.memoryTotal,
-                  diskUsedBytes: engine.diskUsedBytes,
-                  diskTotalBytes: engine.diskTotalBytes,
-                  networkDownBytes: engine.networkDownBytes,
-                  networkUpBytes: engine.networkUpBytes,
-                  batteryLevel: engine.batteryLevel,
-                  batteryState: engine.batteryState,
-                  fanRPM: engine.fanRPM,
-                  isFanAvailable: engine.isFanAvailable,
-                  temperature: engine.temperature,
-                  isTemperatureAvailable: engine.isTemperatureAvailable)
-    }
-}
-
-/// Builds the menu bar title. The result is drawn into a *template* image so
-/// AppKit inverts it for dark menu bars and for the highlighted (popover open)
+/// Builds the menu bar title as a pure function of a `StatsSnapshot`, so it can be
+/// tested without a live `StatsEngine`. The result is drawn into a *template* image
+/// so AppKit inverts it for dark menu bars and for the highlighted (popover open)
 /// state — colours set by hand break in at least one of those.
 enum MenuBarRenderer {
-    private static let unavailable = "—"
+    private static let unavailable = MetricFormat.unavailable
     /// Two spaces read as a gap without the noise of a separator glyph.
     private static let separator = "  "
 
-    static func segment(_ metric: MenuBarMetric, _ s: MenuBarSnapshot) -> String {
-        "\(metric.label) \(value(metric, s))"
+    static func segment(_ metric: MenuBarMetric, _ s: StatsSnapshot,
+                        locale: Locale = .autoupdatingCurrent) -> String {
+        "\(metric.label) \(value(metric, s, locale))"
     }
 
-    static func title(_ metrics: [MenuBarMetric], _ s: MenuBarSnapshot) -> String? {
+    static func title(_ metrics: [MenuBarMetric], _ s: StatsSnapshot,
+                      locale: Locale = .autoupdatingCurrent) -> String? {
         guard !metrics.isEmpty else { return nil }
-        return metrics.map { segment($0, s) }.joined(separator: separator)
+        return metrics.map { segment($0, s, locale: locale) }.joined(separator: separator)
     }
 
-    static func image(_ metrics: [MenuBarMetric], _ s: MenuBarSnapshot) -> NSImage? {
+    static func image(_ metrics: [MenuBarMetric], _ s: StatsSnapshot) -> NSImage? {
         guard let title = title(metrics, s) else { return nil }
         return image(title: title)
     }
@@ -141,28 +84,32 @@ enum MenuBarRenderer {
 
     // MARK: - Values
 
-    private static func value(_ metric: MenuBarMetric, _ s: MenuBarSnapshot) -> String {
+    /// Same units as the cards, compacted: whole numbers and single-letter units,
+    /// since the menu bar pays for every point of width.
+    private static func value(_ metric: MenuBarMetric, _ s: StatsSnapshot, _ locale: Locale) -> String {
         switch metric {
         case .cpu:
-            return String(format: "%.0f%%", s.cpuUsage)
+            return MetricFormat.percent(s.cpuUsage, digits: 0, locale: locale)
         case .gpu:
-            return String(format: "%.0f%%", s.gpuUsage)
+            return s.isGPUAvailable ? MetricFormat.percent(s.gpuUsage, digits: 0, locale: locale) : unavailable
         case .ram:
             guard s.memoryTotal > 0 else { return unavailable }
-            return String(format: "%.1fG", Double(s.memoryUsed) / 1_073_741_824)
+            return MemorySize.compact(s.memoryUsed, locale: locale)
         case .disk:
             guard s.diskTotalBytes > 0 else { return unavailable }
-            return String(format: "%.0f%%", Double(s.diskUsedBytes) / Double(s.diskTotalBytes) * 100)
+            let used = min(s.diskUsedBytes, s.diskTotalBytes)
+            return MetricFormat.percent(Double(used) / Double(s.diskTotalBytes) * 100, digits: 0, locale: locale)
         case .network:
-            return "↓\(ByteRate.compact(s.networkDownBytes)) ↑\(ByteRate.compact(s.networkUpBytes))"
+            return "↓\(ByteRate.compact(s.networkDownBytes, locale: locale)) "
+                + "↑\(ByteRate.compact(s.networkUpBytes, locale: locale))"
         case .battery:
-            let available = s.batteryLevel > 0 && s.batteryState != "Unknown"
-            return available ? "\(s.batteryLevel)%" : unavailable
+            return s.isBatteryAvailable ? "\(s.batteryLevel)%" : unavailable
         case .fan:
             // The RPM unit is dropped here; the popover spells it out.
             return s.isFanAvailable ? "\(s.fanRPM)" : unavailable
         case .temp:
-            return s.isTemperatureAvailable ? String(format: "%.0f°C", s.temperature) : unavailable
+            guard s.isTemperatureAvailable else { return unavailable }
+            return MetricFormat.decimal(s.temperature, digits: 0, locale: locale) + "°C"
         }
     }
 }

@@ -14,6 +14,10 @@ struct MemorySample {
 /// kernel's own pressure metric, so it is an approximation, not the exact same curve.
 enum MemoryMetrics {
 
+    /// Each mach_host_self() call adds a send-right reference that is never released,
+    /// so the port is fetched once rather than on every tick.
+    private static let host = mach_host_self()
+
     static func sample() -> MemorySample {
         let total = ProcessInfo.processInfo.physicalMemory
 
@@ -21,7 +25,7 @@ enum MemoryMetrics {
         var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64_data_t>.stride / MemoryLayout<integer_t>.stride)
         let result = withUnsafeMutablePointer(to: &stats) { pointer in
             pointer.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
-                host_statistics64(mach_host_self(), HOST_VM_INFO64, $0, &count)
+                host_statistics64(host, HOST_VM_INFO64, $0, &count)
             }
         }
         guard result == KERN_SUCCESS else {
