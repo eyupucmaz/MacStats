@@ -32,10 +32,19 @@ enum MemoryMetrics {
             return MemorySample(used: 0, total: total, pressure: 0)
         }
 
-        let pageSize = UInt64(vm_kernel_page_size)
-        let active = UInt64(stats.active_count) * pageSize
-        let wired = UInt64(stats.wire_count) * pageSize
-        let compressed = UInt64(stats.compressor_page_count) * pageSize
+        return derive(activePages: UInt64(stats.active_count),
+                      wiredPages: UInt64(stats.wire_count),
+                      compressorPages: UInt64(stats.compressor_page_count),
+                      pageSize: UInt64(vm_kernel_page_size),
+                      total: total)
+    }
+
+    /// Used and pressure from page counts; both are capped at `total`.
+    static func derive(activePages: UInt64, wiredPages: UInt64, compressorPages: UInt64,
+                       pageSize: UInt64, total: UInt64) -> MemorySample {
+        let active = activePages * pageSize
+        let wired = wiredPages * pageSize
+        let compressed = compressorPages * pageSize
 
         let used = min(active + wired + compressed, total)
         let pressure = total > 0 ? min(100, Double(wired + compressed) / Double(total) * 100) : 0

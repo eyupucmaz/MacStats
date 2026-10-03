@@ -4,7 +4,9 @@ SWIFT ?= swift
 APP_BUNDLE := dist/MacStats.app
 # Release version comes from Info.plist so the Makefile never drifts from the bundle.
 VERSION ?= $(shell /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Info.plist)
-BUILD_NUMBER ?= 1
+# Build number = commits reachable from HEAD, as in CI and releases (falls back to 1
+# outside a full git checkout).
+BUILD_NUMBER ?= $(shell bash Scripts/build-number.sh 2>/dev/null || echo 1)
 DMG := dist/MacStats-$(VERSION)-universal.dmg
 
 .PHONY: all build release app dmg verify-app verify-release icon test run clean help

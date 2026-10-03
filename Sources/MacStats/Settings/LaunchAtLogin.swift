@@ -12,9 +12,9 @@ enum LaunchAtLogin {
         var errorDescription: String? {
             switch self {
             case .unsupported:
-                return "Launch at Login needs MacStats to run from an installed .app bundle."
+                return "Launch at Login only works when MacStats is installed as an app, not in a development build."
             case .system(let message):
-                return message
+                return "Couldn't change Launch at Login: \(message)"
             }
         }
     }
@@ -32,14 +32,14 @@ enum LaunchAtLogin {
     /// Human-readable state for the settings UI.
     static var statusDescription: String {
         guard isSupported else {
-            return "Unavailable — MacStats is not running from an .app bundle."
+            return "Not available in a development build. Install MacStats as an app to use it."
         }
         switch SMAppService.mainApp.status {
-        case .enabled: return "Registered with launchd."
-        case .notRegistered: return "Not registered."
-        case .requiresApproval: return "Waiting for approval in System Settings › General › Login Items."
-        case .notFound: return "Login item not found."
-        @unknown default: return "Unknown status."
+        case .enabled: return "MacStats will open when you log in."
+        case .notRegistered: return "MacStats won't open automatically when you log in."
+        case .requiresApproval: return "Allow MacStats in System Settings › General › Login Items to finish turning this on."
+        case .notFound: return "macOS can't find MacStats' login item. Move MacStats to the Applications folder and try again."
+        @unknown default: return "Couldn't check whether MacStats opens at login."
         }
     }
 

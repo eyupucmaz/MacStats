@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing semantic tag to release, for example v0.2.0
+        description: Existing semantic tag to release, for example v0.2.0 (run the workflow from that same tag)
         required: true
         type: string
 
@@ -26,6 +26,10 @@ jobs:
   build:
     name: Build and verify release
     runs-on: macos-15
+    permissions:
+      contents: read
+      # Lets Scripts/require-ci-success.sh read the CI runs of the tagged commit.
+      actions: read
     outputs:
       version: ${{ steps.tag.outputs.version }}
     steps:
@@ -38,6 +42,13 @@ jobs:
         shell: bash
         run: |
           [[ "${RELEASE_TAG}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+          # The protected `release` environment only accepts tag refs, so a manual
+          # run must be dispatched from the tag itself.
+          if [ "${GITHUB_REF}" != "refs/tags/${RELEASE_TAG}" ]; then
+            printf 'error: run the release from its tag: gh workflow run release.yml --ref %s -f tag=%s\n' \
+              "${RELEASE_TAG}" "${RELEASE_TAG}" >&2
+            exit 1
+          fi
           git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}"
           test "$(git rev-parse HEAD)" = "$(git rev-list -n 1 "${RELEASE_TAG}")"
           printf 'version=%s\n' "${RELEASE_TAG#v}" >> "${GITHUB_OUTPUT}"
@@ -52,6 +63,19 @@ jobs:
             exit 1
           fi
           printf '%s (%s) is on origin/main.\n' "${RELEASE_TAG}" "${tag_commit}"
+      - name: Require CI to have passed on the tagged commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag_commit="$(git rev-list -n 1 "${RELEASE_TAG}")"
+          bash Scripts/require-ci-success.sh "${GITHUB_REPOSITORY}" "${tag_commit}"
+      - name: Derive build number
+        shell: bash
+        run: |
+          build_number="$(bash Scripts/build-number.sh)"
+          printf 'Build number: %s\n' "${build_number}"
+          printf 'BUILD_NUMBER=%s\n' "${build_number}" >> "${GITHUB_ENV}"
       - name: Select Xcode
         run: |
           test -d "${XCODE_APP}"
@@ -71,7 +95,7 @@ jobs:
         env:
           RELEASE_VERSION: ${{ steps.tag.outputs.version }}
         run: |
-          APP_VERSION="${RELEASE_VERSION}" BUILD_NUMBER="${GITHUB_RUN_NUMBER}" RELEASE_STRICT=1 \
+          APP_VERSION="${RELEASE_VERSION}" BUILD_NUMBER="${BUILD_NUMBER}" RELEASE_STRICT=1 \
             bash Scripts/build-app.sh
       - name: Package and verify DMG
         shell: bash
@@ -79,7 +103,7 @@ jobs:
           RELEASE_VERSION: ${{ steps.tag.outputs.version }}
         run: |
           bash Scripts/package-dmg.sh "${RELEASE_VERSION}"
-          bash Scripts/verify-release.sh "${RELEASE_VERSION}" "${GITHUB_RUN_NUMBER}"
+          bash Scripts/verify-release.sh "${RELEASE_VERSION}" "${BUILD_NUMBER}"
       - name: Upload release files
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1 (Node 24)
         with:
@@ -94,6 +118,8 @@ jobs:
     name: Publish Public Preview
     needs: build
     runs-on: ubuntu-24.04
+    # Protected environment: deployments are limited to tags matching v*.*.*.
+    environment: release
     permissions:
       contents: write
     env:
