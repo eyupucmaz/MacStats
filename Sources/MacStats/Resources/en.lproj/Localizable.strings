@@ -500,3 +500,55 @@
 /* Memory detail page: About section rows */
 "Physical memory" = "Physical memory";
 "Page size" = "Page size";
+
+/* MARK: Network detail (#30) */
+
+/* Section titles of the Network detail page */
+"Throughput" = "Throughput";
+"Totals" = "Totals";
+"Interfaces" = "Interfaces";
+"Wi-Fi" = "Wi-Fi";
+/* Network page: download and upload rates, chart series and stats rows */
+"Download" = "Download";
+"Upload" = "Upload";
+/* Network page: VoiceOver title of the download/upload chart */
+"Download and upload" = "Download and upload";
+/* Network page: byte totals counted since MacStats was opened, and since the Mac started up */
+"Since MacStats started" = "Since MacStats started";
+"Since boot" = "Since boot";
+/* Network page, VoiceOver: a row title, then download and upload amounts, e.g. "Since boot, download 2.1 gigabytes, upload 310 megabytes" */
+"%@, download %@, upload %@" = "%@, download %@, upload %@";
+/* Network page: an interface's current rates */
+"Now" = "Now";
+/* Network page: interface kinds */
+"Ethernet" = "Ethernet";
+"Other" = "Other";
+/* Network page: badge on the interface carrying the default route, and its VoiceOver form */
+"Primary" = "Primary";
+"primary" = "primary";
+/* Network page: local addresses and Ethernet link speed of an interface */
+"IPv4" = "IPv4";
+"IPv6" = "IPv6";
+"Link speed" = "Link speed";
+/* Network page: shown when no interface is in use */
+"No network connection" = "No network connection";
+"Interfaces appear here when this Mac is connected to a network." = "Interfaces appear here when this Mac is connected to a network.";
+/* Network page: Wi-Fi rows (network name only appears when macOS provides it without Location access) */
+"Network name" = "Network name";
+"Signal" = "Signal";
+"Noise" = "Noise";
+"Transmit rate" = "Transmit rate";
+"Channel" = "Channel";
+/* Wi-Fi signal and noise level, e.g. "-62 dBm", and its VoiceOver form */
+"%@ dBm" = "%@ dBm";
+"%@ decibel-milliwatts" = "%@ decibel-milliwatts";
+/* Wi-Fi bands */
+"2.4 GHz" = "2.4 GHz";
+"5 GHz" = "5 GHz";
+"6 GHz" = "6 GHz";
+/* Wi-Fi channel and its band, e.g. "36 (5 GHz)" */
+"%@ (%@)" = "%@ (%@)";
+/* Spoken bit-rate units, as in "1 gigabits per second" (link speed, Wi-Fi transmit rate) */
+"gigabits" = "gigabits";
+"megabits" = "megabits";
+"kilobits" = "kilobits";

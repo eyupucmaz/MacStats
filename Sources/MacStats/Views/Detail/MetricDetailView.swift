@@ -11,7 +11,7 @@ struct MetricDetailView: View {
         case .gpu: DetailPlaceholderPage(metric: .gpu)
         case .ram: MemoryDetailPage()
         case .disk: DiskDetailPage()
-        case .network: DetailPlaceholderPage(metric: .network)
+        case .network: NetworkDetailPage()
         case .battery: DetailPlaceholderPage(metric: .battery)
         case .fan: DetailPlaceholderPage(metric: .fan)
         case .temp: DetailPlaceholderPage(metric: .temp)
