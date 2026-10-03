@@ -7,16 +7,17 @@ struct SettingsView: View {
     /// Closes the hosting `NSWindow`; `@Environment(\.dismiss)` does nothing here.
     var onDone: () -> Void = {}
 
-    /// `menuBarItems` is a plain array, so each toggle drives it through the setter.
-    private func menuBarBinding(_ metric: MenuBarMetric) -> Binding<Bool> {
-        Binding(get: { settings.menuBarItems.contains(metric.rawValue) },
-                set: { settings.setMenuBarMetric(metric, enabled: $0) })
+    /// Routes each checkbox through `AppSettings` so the card flags and the
+    /// ordered `menuBarItems` array keep their existing persisted shape.
+    private func binding(_ metric: MenuBarMetric, _ placement: MetricPlacement) -> Binding<Bool> {
+        Binding(get: { settings.isShown(metric, in: placement) },
+                set: { settings.setShown(metric, in: placement, $0) })
     }
 
     private var menuBarNote: String {
         settings.showsMetricsInMenuBar
-            ? "Selected metrics replace the menu bar icon. Each one adds width, so two or three is usually the limit before the bar gets crowded."
-            : "With nothing selected the menu bar shows the MacStats icon."
+            ? "Metrics ticked under Menu bar replace the MacStats icon. Each one adds width, so two or three is usually the limit before the bar gets crowded."
+            : "With nothing ticked under Menu bar, the menu bar shows the MacStats icon."
     }
 
     private var samplingNote: String {
@@ -28,21 +29,8 @@ struct SettingsView: View {
     var body: some View {
         VStack(spacing: 0) {
             Form {
-                Section("Display Options") {
-                    Toggle("Show CPU Usage", isOn: $settings.showCPU)
-                    Toggle("Show GPU", isOn: $settings.showGPU)
-                    Toggle("Show Memory", isOn: $settings.showMemory)
-                    Toggle("Show Battery", isOn: $settings.showBattery)
-                    Toggle("Show Disk Usage", isOn: $settings.showDisk)
-                    Toggle("Show Network", isOn: $settings.showNetwork)
-                    Toggle("Show Fan Speed", isOn: $settings.showFan)
-                    Toggle("Show Temperature", isOn: $settings.showTemperature)
-                }
-
-                Section("Menu Bar") {
-                    ForEach(MenuBarMetric.allCases) { metric in
-                        Toggle(metric.settingsTitle, isOn: menuBarBinding(metric))
-                    }
+                Section("Metrics") {
+                    metricsTable
                     Text(menuBarNote)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -102,6 +90,41 @@ struct SettingsView: View {
         }
     }
 
+    /// One row per metric with a checkbox for each place it can appear;
+    /// replaces two separate eight-toggle lists.
+    private var metricsTable: some View {
+        Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 8) {
+            GridRow {
+                Text("Metric")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                ForEach(MetricPlacement.allCases, id: \.self) { placement in
+                    Text(placement.columnTitle)
+                        .frame(minWidth: Self.checkboxColumnWidth)
+                        .gridColumnAlignment(.center)
+                }
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .accessibilityAddTraits(.isHeader)
+
+            ForEach(MenuBarMetric.allCases) { metric in
+                GridRow {
+                    Text(metric.settingsTitle)
+                        .accessibilityHidden(true) // each checkbox already names its metric
+                    ForEach(MetricPlacement.allCases, id: \.self) { placement in
+                        Toggle(placement.accessibilityLabel(for: metric),
+                               isOn: binding(metric, placement))
+                            .toggleStyle(.checkbox)
+                            .labelsHidden()
+                            .accessibilityHint(placement.accessibilityHint)
+                    }
+                }
+            }
+        }
+    }
+
+    private static let checkboxColumnWidth: CGFloat = 64
+
     static var versionString: String {
         let info = Bundle.main.infoDictionary
         let short = info?["CFBundleShortVersionString"] as? String
@@ -111,6 +134,28 @@ struct SettingsView: View {
         case let (short?, _): return short
         case let (_, build?): return build
         default: return "unknown"
+        }
+    }
+}
+
+extension MetricPlacement {
+    /// Column header in the Settings metrics table.
+    var columnTitle: String {
+        switch self {
+        case .card: return "Card"
+        case .menuBar: return "Menu bar"
+        }
+    }
+
+    /// The checkboxes have no visible label, so VoiceOver needs metric and column.
+    func accessibilityLabel(for metric: MenuBarMetric) -> String {
+        "\(metric.settingsTitle), \(columnTitle)"
+    }
+
+    var accessibilityHint: String {
+        switch self {
+        case .card: return "Shows this metric as a card when you open MacStats from the menu bar."
+        case .menuBar: return "Shows this metric in the menu bar."
         }
     }
 }

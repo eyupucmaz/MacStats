@@ -23,15 +23,16 @@ enum MenuBarMetric: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Spelled out for the Settings toggles.
+    /// Spelled out for the Settings table: the component plus what is measured,
+    /// so every row reads the same way.
     var settingsTitle: String {
         switch self {
         case .cpu: return "CPU Usage"
-        case .gpu: return "GPU"
-        case .ram: return "Memory"
+        case .gpu: return "GPU Usage"
+        case .ram: return "Memory Usage"
         case .disk: return "Disk Usage"
-        case .network: return "Network"
-        case .battery: return "Battery"
+        case .network: return "Network Traffic"
+        case .battery: return "Battery Level"
         case .fan: return "Fan Speed"
         case .temp: return "Temperature"
         }

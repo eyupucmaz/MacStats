@@ -1,6 +1,11 @@
 import Combine
 import Foundation
 
+/// Where a metric can appear: as a card in the popover, or in the menu bar title.
+enum MetricPlacement: CaseIterable {
+    case card, menuBar
+}
+
 /// Single source of truth for user preferences, backed by `UserDefaults`.
 /// Both `StatsView` and `SettingsView` observe this object — no scattered `@AppStorage`.
 final class AppSettings: ObservableObject {
@@ -114,6 +119,35 @@ final class AppSettings: ObservableObject {
             menuBarItems.append(metric.rawValue)
         } else {
             menuBarItems.removeAll { $0 == metric.rawValue }
+        }
+    }
+
+    /// The persisted popover-card flag for each metric. Settings shows the card
+    /// and menu bar choices side by side, so both are addressed by `MenuBarMetric`.
+    static func cardKeyPath(for metric: MenuBarMetric) -> ReferenceWritableKeyPath<AppSettings, Bool> {
+        switch metric {
+        case .cpu: return \.showCPU
+        case .gpu: return \.showGPU
+        case .ram: return \.showMemory
+        case .disk: return \.showDisk
+        case .network: return \.showNetwork
+        case .battery: return \.showBattery
+        case .fan: return \.showFan
+        case .temp: return \.showTemperature
+        }
+    }
+
+    func isShown(_ metric: MenuBarMetric, in placement: MetricPlacement) -> Bool {
+        switch placement {
+        case .card: return self[keyPath: Self.cardKeyPath(for: metric)]
+        case .menuBar: return menuBarItems.contains(metric.rawValue)
+        }
+    }
+
+    func setShown(_ metric: MenuBarMetric, in placement: MetricPlacement, _ shown: Bool) {
+        switch placement {
+        case .card: self[keyPath: Self.cardKeyPath(for: metric)] = shown
+        case .menuBar: setMenuBarMetric(metric, enabled: shown)
         }
     }
 
