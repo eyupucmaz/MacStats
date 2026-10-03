@@ -1,12 +1,15 @@
 # Contributing to MacStats
 
-Thank you for improving MacStats. Please keep contributions focused on the
-monitoring-only public preview.
+Thank you for improving MacStats. MacStats monitors your Mac and offers optional
+audio controls; it never writes fan or SMC settings. Please keep contributions
+within that scope.
 
 ## Prerequisites
 
-- macOS 13 (Ventura) or later.
-- Xcode or a Swift toolchain compatible with Swift tools 5.9.
+- macOS 13.5 (Ventura) or later, as required by Xcode 15.1.
+- Xcode 15.1 or later (macOS 14.2 SDK). The per-app audio mixer uses CoreAudio
+  process taps, which need the macOS 14.2 SDK to build. The app itself still
+  runs on macOS 13 or later.
 
 ## Before opening a pull request
 
@@ -18,8 +21,9 @@ bash Scripts/check-monitoring-only.sh
 for script in Scripts/*.sh; do bash -n "$script"; done
 ```
 
-Do not add product code or tests that write to SMC. The project is
-monitoring-only, and the safety check must continue to pass.
+Do not add product code or tests that write to SMC. Fan and SMC access stays
+read-only, and the safety check must continue to pass. Audio changes must keep
+audio processing local: never record, store, or send captured audio.
 
 Keep commits focused. Open an issue before proposing a broad behavioral change
 so maintainers and contributors can agree on scope first.
