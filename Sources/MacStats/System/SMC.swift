@@ -8,11 +8,7 @@ import IOKit
 /// Nothing here traps.
 ///
 /// Keys used by this file:
-///   `FNum`   fan count                                          (ui8)
 ///   `F<n>Ac` fan n actual RPM                                    (flt / fpe2)
-///   `F<n>Mn` fan n minimum RPM                                   (flt / fpe2)
-///   `F<n>Mx` fan n maximum RPM                                   (flt / fpe2)
-///   `F<n>Tg` fan n target RPM diagnostic                           (flt / fpe2)
 ///   `Tp09` `Tp0T` `Tp01` `Tp05` `Tp0D` `Tp0H` `Tg0f` `Tg0j`
 ///           Apple Silicon CPU/SoC die sensors                    (flt, °C)
 ///   `TC0P` `TC0D` `TCAD` Intel-era CPU proximity/die sensors      (sp78, °C)
@@ -26,8 +22,10 @@ final class SMCService: @unchecked Sendable {
     private static let selectorHandleYPCEvent: UInt32 = 2
 
     private static let cmdReadBytes: UInt8 = 5
-    private static let cmdReadIndex: UInt8 = 8
     private static let cmdReadKeyInfo: UInt8 = 9
+
+    /// `SMCKeyData_t.result` when the SMC does not know the key (`kSMCKeyNotFound`).
+    private static let resultKeyNotFound: UInt8 = 0x84
 
     /// 32-byte payload of `SMCKeyData_t`.
     private typealias SMCBytes = (
@@ -85,14 +83,6 @@ final class SMCService: @unchecked Sendable {
         var bytes: SMCBytes = SMCService.emptyBytes
     }
 
-    /// A decoded raw SMC value: its four-character type plus its payload.
-    struct RawValue {
-        let key: String
-        let type: String
-        let bytes: [UInt8]
-        let attributes: UInt8
-    }
-
     // MARK: - State
 
     private let lock = NSLock()
@@ -101,12 +91,11 @@ final class SMCService: @unchecked Sendable {
 
     /// `dataSize`/`dataType` per key; key metadata never changes at runtime.
     private var keyInfoCache: [UInt32: SMCKeyInfoData] = [:]
-    private var cachedFanCount: Int?
-    private var cachedTemperatureKey: String?
-    private var temperatureProbed = false
 
-    /// `IOReturn` of the most recent kernel round trip; diagnostics only.
-    private(set) var lastKernelStatus: kern_return_t = KERN_SUCCESS
+    /// Guards `temperatureSelector` for the whole probe. Separate from `lock`,
+    /// which `call` takes for every round trip made while probing.
+    private let temperatureLock = NSLock()
+    private var temperatureSelector = TemperatureKeySelector(candidates: SMCService.temperatureKeys)
 
     // MARK: - Lifecycle
 
@@ -137,24 +126,6 @@ final class SMCService: @unchecked Sendable {
 
     // MARK: - Public reads
 
-    /// Number of fans reported by `FNum`; 0 on fanless machines or on failure.
-    func fanCount() -> Int {
-        lock.lock()
-        if let cached = cachedFanCount {
-            lock.unlock()
-            return cached
-        }
-        lock.unlock()
-
-        let count = Int(readDouble("FNum") ?? 0)
-        let clamped = (count > 0 && count < 16) ? count : 0
-
-        lock.lock()
-        cachedFanCount = clamped
-        lock.unlock()
-        return clamped
-    }
-
     /// Actual RPM of fan 0 (`F0Ac`); `nil` when unavailable.
     func readFanRPM() -> Int? { readFanRPM(index: 0) }
 
@@ -164,94 +135,20 @@ final class SMCService: @unchecked Sendable {
         return Int(rpm.rounded())
     }
 
-    /// Minimum RPM of the given fan (`F<n>Mn`).
-    func readFanMinRPM(index: Int = 0) -> Int? {
-        guard let rpm = readDouble("F\(index)Mn"), rpm.isFinite, rpm > 0 else { return nil }
-        return Int(rpm.rounded())
-    }
-
-    /// Maximum RPM of the given fan (`F<n>Mx`).
-    func readFanMaxRPM(index: Int = 0) -> Int? {
-        guard let rpm = readDouble("F\(index)Mx"), rpm.isFinite, rpm > 0 else { return nil }
-        return Int(rpm.rounded())
-    }
-
-    /// Target RPM currently programmed for the given fan (`F<n>Tg`).
-    func readFanTargetRPM(index: Int = 0) -> Int? {
-        guard let rpm = readDouble("F\(index)Tg"), rpm.isFinite, rpm >= 0 else { return nil }
-        return Int(rpm.rounded())
-    }
-
     /// CPU die temperature in Celsius, or `nil` when no sensor reads plausibly.
     /// Never synthesises a value.
     func readCPUTemperature() -> Double? {
-        lock.lock()
-        let cached = cachedTemperatureKey
-        let probed = temperatureProbed
-        lock.unlock()
-
-        if let key = cached, let value = readDouble(key), Self.isPlausibleTemperature(value) {
-            return value
-        }
-        // A cached key that stopped reading plausibly forces a re-probe.
-        if probed && cached == nil { return nil }
-
-        for key in Self.temperatureKeys {
-            guard let value = readDouble(key), Self.isPlausibleTemperature(value) else { continue }
-            lock.lock()
-            cachedTemperatureKey = key
-            temperatureProbed = true
-            lock.unlock()
-            return value
-        }
-
-        lock.lock()
-        cachedTemperatureKey = nil
-        temperatureProbed = true
-        lock.unlock()
-        return nil
+        temperatureLock.lock()
+        defer { temperatureLock.unlock() }
+        return temperatureSelector.read(now: ProcessInfo.processInfo.systemUptime) { readDouble($0) }
     }
 
     /// The temperature key that is actually being used, once probed.
     var activeTemperatureKey: String? {
-        lock.lock()
-        defer { lock.unlock() }
-        return cachedTemperatureKey
+        temperatureLock.lock()
+        defer { temperatureLock.unlock() }
+        return temperatureSelector.cachedKey
     }
-
-    /// True when the key exists on this machine (metadata read succeeds).
-    func hasKey(_ key: String) -> Bool {
-        keyInfo(for: Self.fourCharCode(key)) != nil
-    }
-
-    /// Every key the SMC exposes, in index order (`#KEY` + `SMC_CMD_READ_INDEX`).
-    /// Diagnostics only — never call this on the metrics path.
-    func allKeys(limit: Int = 4096) -> [String] {
-        guard opened, let total = readDouble("#KEY"), total > 0 else { return [] }
-        var keys: [String] = []
-        for index in 0..<min(Int(total), limit) {
-            var input = SMCKeyData()
-            input.data8 = Self.cmdReadIndex
-            input.data32 = UInt32(index)
-            guard let output = call(&input), output.result == 0, output.key != 0 else { continue }
-            keys.append(Self.string(fromFourCharCode: output.key))
-        }
-        return keys
-    }
-
-    /// Reads a key without interpreting it — used by diagnostics.
-    func readRaw(_ key: String) -> RawValue? {
-        guard let value = read(key) else { return nil }
-        return RawValue(
-            key: key,
-            type: Self.string(fromFourCharCode: value.type),
-            bytes: value.bytes,
-            attributes: keyInfo(for: Self.fourCharCode(key))?.dataAttributes ?? 0
-        )
-    }
-
-    /// Numeric value of any key, decoded according to its SMC data type.
-    func readValue(_ key: String) -> Double? { readDouble(key) }
 
     // MARK: - Key access
 
@@ -286,9 +183,15 @@ final class SMCService: @unchecked Sendable {
         input.key = code
         input.data8 = Self.cmdReadKeyInfo
 
-        var info = SMCKeyInfoData()
-        if let output = call(&input), output.result == 0 {
-            info = output.keyInfo
+        // Only a definitive answer is cached: metadata on success, or a
+        // zero-sized entry for "key not found". A failed round trip or any
+        // other SMC error may be transient, so the next read asks again.
+        guard let output = call(&input) else { return nil }
+        let info: SMCKeyInfoData
+        switch output.result {
+        case 0: info = output.keyInfo
+        case Self.resultKeyNotFound: info = SMCKeyInfoData()
+        default: return nil
         }
 
         lock.lock()
@@ -308,7 +211,6 @@ final class SMCService: @unchecked Sendable {
         let result = IOConnectCallStructMethod(
             connection, Self.selectorHandleYPCEvent, &input, size, &output, &outSize
         )
-        lastKernelStatus = result
         lock.unlock()
 
         return result == kIOReturnSuccess ? output : nil
@@ -326,6 +228,44 @@ final class SMCService: @unchecked Sendable {
         "Tg0f", "Tg0j",
         "TC0P", "TC0D", "TCAD"
     ]
+
+    /// Remembers which candidate key reads plausibly and rate-limits the
+    /// fallback probe over every candidate (each costs up to two SMC round
+    /// trips). Pure state machine, so it is testable without an SMC.
+    struct TemperatureKeySelector {
+        /// Minimum seconds between two full probes.
+        static let defaultReprobeInterval: TimeInterval = 30
+
+        let candidates: [String]
+        let reprobeInterval: TimeInterval
+        private(set) var cachedKey: String?
+        private var lastProbe: TimeInterval?
+
+        init(candidates: [String], reprobeInterval: TimeInterval = Self.defaultReprobeInterval) {
+            self.candidates = candidates
+            self.reprobeInterval = reprobeInterval
+        }
+
+        /// `now` is a monotonic timestamp in seconds; `value` reads one key.
+        mutating func read(now: TimeInterval, value: (String) -> Double?) -> Double? {
+            if let key = cachedKey, let reading = value(key), SMCService.isPlausibleTemperature(reading) {
+                return reading
+            }
+            // No cached key yet, or it stopped reading plausibly: probe every
+            // candidate, but at most once per `reprobeInterval`. In between the
+            // cached key (if any) keeps being retried on its own.
+            if let lastProbe, now - lastProbe < reprobeInterval { return nil }
+            lastProbe = now
+
+            for key in candidates {
+                guard let reading = value(key), SMCService.isPlausibleTemperature(reading) else { continue }
+                cachedKey = key
+                return reading
+            }
+            cachedKey = nil
+            return nil
+        }
+    }
 
     static func isPlausibleTemperature(_ value: Double) -> Bool {
         value.isFinite && value >= 10 && value <= 120
@@ -397,45 +337,6 @@ final class SMCService: @unchecked Sendable {
         return Int64(unsigned)
     }
 
-    /// Well-known `SMCKeyData_t.result` codes.
-    static func describe(result: UInt8) -> String {
-        switch result {
-        case 0x00: return "success"
-        case 0x01: return "generic error"
-        case 0x80: return "communication collision"
-        case 0x81: return "spurious data"
-        case 0x82: return "bad command"
-        case 0x83: return "bad parameter"
-        case 0x84: return "key not found"
-        case 0x85: return "key not readable"
-        case 0x86: return "key not writable"
-        case 0x87: return "key size mismatch"
-        case 0x88: return "framing error"
-        case 0x89: return "bad argument"
-        case 0xB7: return "timeout"
-        case 0xB8: return "key index out of range"
-        case 0xC0: return "bad function parameter"
-        case 0xC7: return "device access error"
-        case 0xCB: return "unsupported feature"
-        case 0xCC: return "SMBus access error"
-        default: return String(format: "error 0x%02X", result)
-        }
-    }
-
-    /// Well-known `IOReturn` codes seen on the SMC user client.
-    static func describe(kernel status: kern_return_t) -> String {
-        switch status {
-        case kIOReturnSuccess: return "success"
-        case kIOReturnNotPrivileged: return "not privileged (root required)"
-        case kIOReturnNotPermitted: return "operation not permitted"
-        case kIOReturnBadArgument: return "bad argument"
-        case kIOReturnUnsupported: return "unsupported"
-        case kIOReturnNoDevice: return "no device"
-        case kIOReturnError: return "general kernel error"
-        default: return String(format: "IOReturn 0x%08X", UInt32(bitPattern: status))
-        }
-    }
-
     // MARK: - Byte conversion
 
     private static func array(from bytes: SMCBytes, count: Int) -> [UInt8] {
@@ -444,7 +345,4 @@ final class SMCService: @unchecked Sendable {
             (0..<min(max(count, 0), 32)).map { raw[$0] }
         }
     }
-
-    /// Byte size of `SMCKeyData_t` as Swift lays it out — 80 on a correct build.
-    static var keyDataStructSize: Int { MemoryLayout<SMCKeyData>.stride }
 }
