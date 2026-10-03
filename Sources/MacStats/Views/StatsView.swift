@@ -30,6 +30,8 @@ struct StatsView: View {
                 Text(L10n.string("Audio")).tag(PopoverTab.audio)
             }
             .pickerStyle(.segmented)
+            // The title is for VoiceOver only; shown, it crowds the segments.
+            .labelsHidden()
 
             Divider()
 
