@@ -14,7 +14,7 @@ die() {
     exit 1
 }
 
-[ "$#" -ge 1 ] && [ "$#" -le 2 ] || usage
+if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then usage; fi
 VERSION="$1"
 EXPECTED_BUILD="${2:-1}"
 SEMVER_PATTERN='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'

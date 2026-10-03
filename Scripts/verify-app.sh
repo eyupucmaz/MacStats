@@ -20,7 +20,7 @@ normalize_arch_set() {
     printf '%s\n' "$1" | tr ' ' '\n' | awk 'NF' | sort -u | paste -sd ' ' -
 }
 
-[ "$#" -ge 3 ] && [ "$#" -le 4 ] || usage
+if [ "$#" -lt 3 ] || [ "$#" -gt 4 ]; then usage; fi
 
 APP_BUNDLE="$1"
 EXPECTED_VERSION="$2"
