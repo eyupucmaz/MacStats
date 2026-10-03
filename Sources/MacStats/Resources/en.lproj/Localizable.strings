@@ -443,3 +443,60 @@
 "Hard disk drive" = "Hard disk drive";
 "Connection" = "Connection";
 "Firmware" = "Firmware";
+
+/* MARK: Memory detail (#27) */
+
+/* Memory detail page: label of the used / total figure */
+"Used" = "Used";
+
+/* Memory detail page: section and chart titles */
+"Memory used" = "Memory used";
+"Memory pressure" = "Memory pressure";
+"Breakdown" = "Breakdown";
+"Swap & paging" = "Swap & paging";
+"Top processes" = "Top processes";
+
+/* Memory pressure chart legend */
+"Pressure" = "Pressure";
+
+/* Memory pressure levels macOS reports */
+"Normal" = "Normal";
+"Warning" = "Warning";
+
+/* VoiceOver label of the colored pressure-level strip under the pressure chart */
+"Pressure level" = "Pressure level";
+
+/* VoiceOver: the pressure-level strip has no readings in the visible range */
+"No readings yet" = "No readings yet";
+
+/* Caption under the memory pressure chart */
+"The line is wired plus compressed memory as a share of RAM. The band is the level macOS reports, recorded while this page is open." = "The line is wired plus compressed memory as a share of RAM. The band is the level macOS reports, recorded while this page is open.";
+
+/* Memory breakdown categories, as in Activity Monitor */
+"App memory" = "App memory";
+"Wired" = "Wired";
+"Compressed" = "Compressed";
+"Cached files" = "Cached files";
+"Free" = "Free";
+
+/* Shown instead of the memory breakdown when the VM statistics query fails */
+"macOS did not report memory statistics." = "macOS did not report memory statistics.";
+
+/* Swap row; "Not in use" when macOS has not created a swap file */
+"Swap used" = "Swap used";
+"Not in use" = "Not in use";
+
+/* VoiceOver: swap used, then swap total, e.g. "1.2 gigabytes, total 2 gigabytes" */
+"%@, total %@" = "%@, total %@";
+
+/* Paging activity per second */
+"Page-ins" = "Page-ins";
+"Page-outs" = "Page-outs";
+"Swap-ins" = "Swap-ins";
+"Swap-outs" = "Swap-outs";
+"Compressions" = "Compressions";
+"Decompressions" = "Decompressions";
+
+/* Memory detail page: About section rows */
+"Physical memory" = "Physical memory";
+"Page size" = "Page size";
