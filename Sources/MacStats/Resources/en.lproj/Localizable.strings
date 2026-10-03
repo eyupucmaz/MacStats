@@ -341,3 +341,55 @@
 "%@ revolutions per minute" = "%@ revolutions per minute";
 "%@ degrees Celsius" = "%@ degrees Celsius";
 "%@ watts" = "%@ watts";
+
+
+/* MARK: CPU detail (#25) */
+
+/* CPU page section titles */
+"Usage" = "Usage";
+"Cores" = "Cores";
+"Load Average" = "Load Average";
+"Top Processes" = "Top Processes";
+"About This CPU" = "About This CPU";
+/* CPU time split: user processes, the system (kernel), and nothing running */
+"User" = "User";
+"Idle" = "Idle";
+/* Stats row title under the CPU chart: user + system */
+"Total" = "Total";
+/* CPU core groups; macOS names Apple-silicon perf levels Performance, Efficiency or Super */
+"Performance cores" = "Performance cores";
+"Efficiency cores" = "Efficiency cores";
+"Super cores" = "Super cores";
+/* A perf level with a name macOS introduced later, e.g. "Turbo cores" */
+"%@ cores" = "%@ cores";
+/* VoiceOver: one core's bar, e.g. "Core 7, 23 percent" */
+"Core %@, %@" = "Core %@, %@";
+/* VoiceOver: a core group with its average, e.g. "Efficiency cores, average 12.5 percent" */
+"%@, average %@" = "%@, average %@";
+/* Load average columns: over 1, 5 and 15 minutes */
+"1 min" = "1 min";
+"5 min" = "5 min";
+"15 min" = "15 min";
+/* VoiceOver: a load average column; the argument is a spoken range such as "5 minutes" */
+"Load average over %@" = "Load average over %@";
+/* Under the load averages; the argument is the number of logical cores */
+"Out of %@ cores; higher means work is waiting." = "Out of %@ cores; higher means work is waiting.";
+/* Under a process list when some processes belong to other users or are protected */
+"Showing processes you can inspect" = "Showing processes you can inspect";
+/* About This CPU rows */
+"Chip" = "Chip";
+"Uptime" = "Uptime";
+"Thermal state" = "Thermal state";
+/* macOS thermal states, from cool to throttling hard */
+"Nominal" = "Nominal";
+"Fair" = "Fair";
+"Serious" = "Serious";
+"Critical" = "Critical";
+/* Uptime, short: "3 d 4 h", "4 h 12 min", "12 min" */
+"%@ d %@ h" = "%@ d %@ h";
+"%@ h %@ min" = "%@ h %@ min";
+"%@ min" = "%@ min";
+/* Uptime, spoken */
+"%@ day" = "%@ day";
+"%@ days" = "%@ days";
+"%@ hours" = "%@ hours";
