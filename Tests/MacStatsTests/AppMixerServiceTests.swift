@@ -1,8 +1,12 @@
+import Foundation
 import XCTest
 @testable import MacStats
 
 @MainActor
 final class AppMixerServiceTests: XCTestCase {
+    private let music = AppMixerProcess(id: 11, processID: 123, name: "Music", gain: 1, muted: false)
+    private let safari = AppMixerProcess(id: 12, processID: 456, name: "Safari", gain: 1, muted: false)
+
     func testUnsupportedPlatformDoesNotRequestPermissionOrStart() async {
         let platform = FakeAppMixerPlatform(capability: .requiresMacOS142)
         let service = AppMixerService(platform: platform)
@@ -22,8 +26,34 @@ final class AppMixerServiceTests: XCTestCase {
         await service.enable()
 
         XCTAssertFalse(service.isRunning)
+        XCTAssertEqual(service.phase, .off)
+        XCTAssertEqual(service.permission, .denied)
         XCTAssertEqual(service.statusMessage, "MacStats does not have permission to capture application audio.")
+        XCTAssertEqual(platform.permissionRequestCount, 0)
         XCTAssertEqual(platform.startCount, 0)
+    }
+
+    func testUndeterminedPermissionIsRequestedAndDenialIsReported() async {
+        let platform = FakeAppMixerPlatform(capability: .available, permission: .notDetermined)
+        platform.requestResult = .denied
+        let service = AppMixerService(platform: platform)
+
+        await service.enable()
+
+        XCTAssertEqual(platform.permissionRequestCount, 1)
+        XCTAssertEqual(service.permission, .denied)
+        XCTAssertFalse(service.isRunning)
+        XCTAssertEqual(platform.startCount, 0)
+    }
+
+    func testRefreshPermissionPublishesPreflightState() {
+        let platform = FakeAppMixerPlatform(capability: .available, permission: .authorized)
+        let service = AppMixerService(platform: platform)
+        XCTAssertEqual(service.permission, .notDetermined)
+
+        service.refreshPermission()
+
+        XCTAssertEqual(service.permission, .authorized)
     }
 
     func testEnableThenDisableTearsDownTheSession() async {
@@ -40,28 +70,215 @@ final class AppMixerServiceTests: XCTestCase {
         XCTAssertEqual(platform.stopCount, 1)
     }
 
-    func testProcessGainAndMuteUpdatesPublishedMixerState() async {
-        let process = AppMixerProcess(id: 11, processID: 123, name: "Music", gain: 1, muted: false)
+    func testDisableWhenOffDoesNotTouchThePlatform() {
         let platform = FakeAppMixerPlatform(capability: .available, permission: .authorized)
-        platform.processes = [process]
+        let service = AppMixerService(platform: platform)
+
+        service.disable()
+        service.disable()
+
+        XCTAssertEqual(platform.stopCount, 0)
+    }
+
+    func testStartFailureReportsMessageAndReleasesResources() async {
+        let platform = FakeAppMixerPlatform(capability: .available, permission: .authorized)
+        platform.startError = AppMixerError.unavailable("MacStats could not create an application audio tap.")
         let service = AppMixerService(platform: platform)
 
         await service.enable()
-        service.setGain(0.35, for: process.processID)
-        service.setMuted(true, for: process.processID)
 
-        XCTAssertEqual(service.processes.first?.gain, 0.35)
+        XCTAssertFalse(service.isRunning)
+        XCTAssertEqual(service.statusMessage, "MacStats could not create an application audio tap.")
+        XCTAssertEqual(platform.stopCount, 1)
+    }
+
+    func testProcessGainAndMuteUpdatesPublishedMixerStateAndPlatform() async {
+        let platform = FakeAppMixerPlatform(capability: .available, permission: .authorized)
+        platform.discovered = [music]
+        let service = AppMixerService(platform: platform)
+
+        await service.enable()
+        service.setGain(1.35, for: music.processID)
+        service.setMuted(true, for: music.processID)
+
+        XCTAssertEqual(service.processes.first?.gain, 1)
         XCTAssertEqual(service.processes.first?.muted, true)
+        XCTAssertEqual(platform.applied.last?.gain, 1)
+        XCTAssertEqual(platform.applied.last?.muted, true)
+    }
+
+    // MARK: - Concurrency
+
+    func testDoubleEnableStartsOnlyOneSession() async {
+        let platform = FakeAppMixerPlatform(capability: .available, permission: .notDetermined)
+        platform.requestGate = Gate()
+        let service = AppMixerService(platform: platform)
+
+        let first = Task { await service.enable() }
+        await waitUntil { service.phase == .requestingPermission }
+        await service.enable()
+        XCTAssertTrue(service.isBusy)
+        platform.requestGate?.open()
+        await first.value
+
+        XCTAssertTrue(service.isRunning)
+        XCTAssertEqual(platform.permissionRequestCount, 1)
+        XCTAssertEqual(platform.startCount, 1)
+    }
+
+    func testDisableWhileWaitingForPermissionNeverStarts() async {
+        let platform = FakeAppMixerPlatform(capability: .available, permission: .notDetermined)
+        platform.requestGate = Gate()
+        let service = AppMixerService(platform: platform)
+
+        let enabling = Task { await service.enable() }
+        await waitUntil { service.phase == .requestingPermission }
+        service.disable()
+        platform.requestGate?.open()
+        await enabling.value
+
+        XCTAssertEqual(service.phase, .off)
+        XCTAssertEqual(platform.startCount, 0)
+    }
+
+    func testDisableWhileStartingDiscardsTheStartedSession() async {
+        let platform = FakeAppMixerPlatform(capability: .available, permission: .authorized)
+        platform.discovered = [music]
+        platform.startGate = Gate()
+        let service = AppMixerService(platform: platform)
+
+        let enabling = Task { await service.enable() }
+        await waitUntil { platform.startCount == 1 }
+        service.disable()
+        platform.startGate?.open()
+        await enabling.value
+
+        XCTAssertEqual(service.phase, .off)
+        XCTAssertTrue(service.processes.isEmpty)
+        XCTAssertEqual(platform.stopCount, 1)
+    }
+
+    // MARK: - Lifecycle events
+
+    func testProcessChangeRebuildsAndKeepsPerAppSettings() async {
+        let platform = FakeAppMixerPlatform(capability: .available, permission: .authorized)
+        platform.discovered = [music]
+        let service = AppMixerService(platform: platform)
+        await service.enable()
+        service.setGain(0.3, for: music.processID)
+
+        platform.discovered = [music, safari]
+        platform.onEvent?(.processesChanged)
+        await waitUntil { service.processes.count == 2 }
+
+        XCTAssertEqual(platform.startCount, 2)
+        XCTAssertEqual(platform.lastRetained.map(\.gain), [0.3])
+        XCTAssertEqual(service.processes.map(\.gain), [0.3, 1])
+        XCTAssertTrue(service.isRunning)
+    }
+
+    func testOutputDeviceChangeStopsTheMixer() async {
+        let platform = FakeAppMixerPlatform(capability: .available, permission: .authorized)
+        let service = AppMixerService(platform: platform)
+        await service.enable()
+
+        platform.onEvent?(.outputDeviceChanged)
+
+        XCTAssertFalse(service.isRunning)
+        XCTAssertEqual(platform.stopCount, 1)
+        XCTAssertEqual(service.statusMessage, AppMixerService.outputChangedMessage)
+    }
+
+    func testRevokedPermissionStopsTheMixer() async {
+        let platform = FakeAppMixerPlatform(capability: .available, permission: .authorized)
+        let service = AppMixerService(platform: platform)
+        await service.enable()
+
+        platform.permission = .denied
+        service.refreshPermission()
+
+        XCTAssertFalse(service.isRunning)
+        XCTAssertEqual(platform.stopCount, 1)
+        XCTAssertEqual(service.statusMessage, AppMixerService.revokedMessage)
+    }
+
+    func testSleepStopsTheMixerAndWakeRestartsIt() async {
+        let platform = FakeAppMixerPlatform(capability: .available, permission: .authorized)
+        let service = AppMixerService(platform: platform)
+        await service.enable()
+
+        platform.onEvent?(.willSleep)
+        XCTAssertFalse(service.isRunning)
+        XCTAssertEqual(platform.stopCount, 1)
+
+        platform.onEvent?(.didWake)
+        await waitUntil { service.isRunning }
+        XCTAssertEqual(platform.startCount, 2)
+    }
+
+    func testWakeDoesNotStartAMixerTheUserDisabled() async {
+        let platform = FakeAppMixerPlatform(capability: .available, permission: .authorized)
+        let service = AppMixerService(platform: platform)
+
+        platform.onEvent?(.willSleep)
+        platform.onEvent?(.didWake)
+        await Task.yield()
+
+        XCTAssertFalse(service.isRunning)
+        XCTAssertEqual(platform.startCount, 0)
+    }
+
+    private func waitUntil(_ condition: () -> Bool, file: StaticString = #filePath, line: UInt = #line) async {
+        for _ in 0..<500 where !condition() {
+            try? await Task.sleep(nanoseconds: 1_000_000)
+        }
+        XCTAssertTrue(condition(), "condition not reached", file: file, line: line)
     }
 }
 
-private final class FakeAppMixerPlatform: AppMixerPlatform {
+/// A one-shot latch the fake platform can park an async call on.
+private final class Gate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var isOpen = false
+    private var waiter: CheckedContinuation<Void, Never>?
+
+    func wait() async {
+        await withCheckedContinuation { continuation in
+            lock.lock()
+            if isOpen {
+                lock.unlock()
+                continuation.resume()
+            } else {
+                waiter = continuation
+                lock.unlock()
+            }
+        }
+    }
+
+    func open() {
+        lock.lock()
+        isOpen = true
+        let waiter = waiter
+        self.waiter = nil
+        lock.unlock()
+        waiter?.resume()
+    }
+}
+
+private final class FakeAppMixerPlatform: AppMixerPlatform, @unchecked Sendable {
     let capability: AppMixerCapability
     var permission: AppMixerPermission
+    var onEvent: (@MainActor (AppMixerEvent) -> Void)?
+    var requestResult: AppMixerPermission = .authorized
+    var requestGate: Gate?
+    var startGate: Gate?
+    var startError: Error?
+    var discovered: [AppMixerProcess] = []
     var permissionRequestCount = 0
     var startCount = 0
     var stopCount = 0
-    var processes: [AppMixerProcess] = []
+    var lastRetained: [AppMixerProcess] = []
+    var applied: [AppMixerProcess] = []
 
     init(capability: AppMixerCapability, permission: AppMixerPermission = .notDetermined) {
         self.capability = capability
@@ -70,9 +287,19 @@ private final class FakeAppMixerPlatform: AppMixerPlatform {
 
     func requestPermission() async -> AppMixerPermission {
         permissionRequestCount += 1
-        return permission
+        await requestGate?.wait()
+        permission = requestResult
+        return requestResult
     }
 
-    func start() throws { startCount += 1 }
+    func start(retaining: [AppMixerProcess]) async throws -> [AppMixerProcess] {
+        startCount += 1
+        lastRetained = retaining
+        await startGate?.wait()
+        if let startError { throw startError }
+        return discovered.map { process in retaining.first { $0.processID == process.processID } ?? process }
+    }
+
     func stop() { stopCount += 1 }
+    func apply(_ process: AppMixerProcess) { applied.append(process) }
 }
