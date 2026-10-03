@@ -30,25 +30,29 @@ enum GPUMetrics {
                                                             0)?.takeRetainedValue(),
                   let stats = raw as? [String: Any] else { continue }
 
-            var value: Double?
-            for key in percentKeys {
-                if let number = stats[key] as? NSNumber { value = number.doubleValue; break }
-            }
-            if value == nil {
-                for key in rawKeys {
-                    // Legacy drivers report busy time out of 10_000_000 rather than a percentage.
-                    if let number = stats[key] as? NSNumber {
-                        let v = number.doubleValue
-                        value = v > 100 ? v / 100_000 : v
-                        break
-                    }
-                }
-            }
-            if let value {
-                let clamped = min(max(value, 0), 100)
-                if clamped > (best ?? -1) { best = clamped }
-            }
+            if let value = utilization(from: stats), value > (best ?? -1) { best = value }
         }
         return best
+    }
+
+    /// One accelerator's utilization (0...100) from its "PerformanceStatistics", or nil
+    /// when no known key is present. Shared with the GPU detail page, so its per-GPU
+    /// figures match the card.
+    static func utilization(from stats: [String: Any]) -> Double? {
+        var value: Double?
+        for key in percentKeys {
+            if let number = stats[key] as? NSNumber { value = number.doubleValue; break }
+        }
+        if value == nil {
+            for key in rawKeys {
+                // Legacy drivers report busy time out of 10_000_000 rather than a percentage.
+                if let number = stats[key] as? NSNumber {
+                    let v = number.doubleValue
+                    value = v > 100 ? v / 100_000 : v
+                    break
+                }
+            }
+        }
+        return value.map { min(max($0, 0), 100) }
     }
 }
