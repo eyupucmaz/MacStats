@@ -6,17 +6,27 @@ struct StatsView: View {
     @ObservedObject private var settings = AppSettings.shared
     @State private var selectedTab: PopoverTab = .system
 
+    /// One width for both tabs so switching does not resize the popover sideways;
+    /// wide enough for the Audio tab's device pickers and per-app rows.
+    static let popoverWidth: CGFloat = 340
+
     /// Injected by `AppDelegate` so the popover can drive real AppKit windows/menus.
     var onOpenSettings: () -> Void = {}
     var onShowMenu: (NSView) -> Void = { _ in }
+    /// Lets `AppDelegate` pause stats sampling while the Audio tab is shown.
+    var onSelectTab: (PopoverTab) -> Void = { _ in }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            header
+
             Picker("MacStats section", selection: $selectedTab) {
                 Text("System").tag(PopoverTab.system)
                 Text("Audio").tag(PopoverTab.audio)
             }
             .pickerStyle(.segmented)
+
+            Divider()
 
             if selectedTab == .system {
                 systemContent
@@ -25,29 +35,25 @@ struct StatsView: View {
             }
         }
         .padding(12)
-        .frame(width: selectedTab == .system ? 320 : 360)
+        .frame(width: Self.popoverWidth)
+        .onChange(of: selectedTab) { onSelectTab($0) }
     }
 
+    @ViewBuilder
     private var systemContent: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            header
-
-            Divider()
-
-            if settings.hasVisibleCards {
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                    ForEach(cards) { card in
-                        StatCard(card: card)
-                    }
+        if settings.hasVisibleCards {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                ForEach(cards) { card in
+                    StatCard(card: card)
                 }
-                .padding(.bottom, 8)
-            } else {
-                Text("All stats are hidden. Enable some in Settings.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 8)
             }
+            .padding(.bottom, 8)
+        } else {
+            Text("All stats are hidden. Enable some in Settings.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 8)
         }
     }
 
@@ -73,7 +79,6 @@ struct StatsView: View {
                 .help("More")
                 .accessibilityLabel("More actions")
         }
-        .padding(.bottom, 4)
     }
 
     // MARK: - Cards
@@ -83,7 +88,7 @@ struct StatsView: View {
     }
 }
 
-private enum PopoverTab: Hashable {
+enum PopoverTab: Hashable {
     case system
     case audio
 }

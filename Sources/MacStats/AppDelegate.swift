@@ -6,10 +6,8 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private static let warmUpSeconds = 2.0
 
-    /// Sampling is suspended while the popover is closed to keep idle CPU near
-    /// zero — but only while the menu bar shows a static glyph. Live metrics up
-    /// there force continuous sampling; that is the cost of the feature.
-    private var pausesPollingWhenHidden: Bool { !AppSettings.shared.showsMetricsInMenuBar }
+    /// The popover tab last reported by `StatsView`; see `StatsPollingPolicy`.
+    private var selectedTab: PopoverTab = .system
 
     private var statusItem: NSStatusItem?
     /// The title currently drawn in the status item; nil while it shows the icon,
@@ -39,7 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Let one warm-up window elapse so deltas have a baseline, then idle down
         // (a no-op when the menu bar is showing live metrics).
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.warmUpSeconds) { [weak self] in
-            self?.pausePollingIfHidden()
+            self?.applyPollingPolicy()
         }
     }
 
@@ -106,14 +104,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func applyPollingPolicy() {
-        if AppSettings.shared.showsMetricsInMenuBar {
-            resumePolling()
-        } else {
-            pausePollingIfHidden()
-        }
-    }
-
     private func installPopover() {
         let popover = NSPopover()
         popover.behavior = .transient
@@ -121,7 +111,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let statsView = StatsView(
             onOpenSettings: { [weak self] in self?.openSettings() },
-            onShowMenu: { [weak self] view in self?.showStatusMenu(anchoredTo: view) }
+            onShowMenu: { [weak self] view in self?.showStatusMenu(anchoredTo: view) },
+            onSelectTab: { [weak self] tab in
+                self?.selectedTab = tab
+                self?.applyPollingPolicy()
+            }
         )
         .environmentObject(StatsEngine.shared)
         .environmentObject(audioDevices)
@@ -150,7 +144,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if popover.isShown {
             popover.close()
         } else {
-            resumePolling()
+            applyPollingPolicy(popoverShown: true)
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .maxY)
             popover.contentViewController?.view.window?.makeKey()
         }
@@ -260,9 +254,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         StatsEngine.shared.start()
     }
 
-    private func pausePollingIfHidden() {
-        guard pausesPollingWhenHidden, popover?.isShown != true else { return }
-        StatsEngine.shared.stop()
+    /// Starts or stops sampling to match `StatsPollingPolicy`. `popoverShown`
+    /// overrides `popover.isShown` around show/close, when it is not yet settled.
+    private func applyPollingPolicy(popoverShown: Bool? = nil) {
+        let shouldPoll = StatsPollingPolicy.shouldPoll(
+            showsMetricsInMenuBar: AppSettings.shared.showsMetricsInMenuBar,
+            popoverShown: popoverShown ?? (popover?.isShown == true),
+            selectedTab: selectedTab
+        )
+        if shouldPoll {
+            resumePolling()
+        } else {
+            StatsEngine.shared.stop()
+        }
+    }
+}
+
+/// Sampling is suspended while nobody can see it to keep idle CPU near zero:
+/// when the popover is closed or shows only the Audio tab — but only while the
+/// menu bar shows a static glyph. Live metrics up there force continuous
+/// sampling; that is the cost of the feature.
+enum StatsPollingPolicy {
+    static func shouldPoll(showsMetricsInMenuBar: Bool, popoverShown: Bool, selectedTab: PopoverTab) -> Bool {
+        if showsMetricsInMenuBar { return true }
+        return popoverShown && selectedTab == .system
     }
 }
 
@@ -270,7 +285,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 extension AppDelegate: NSPopoverDelegate {
     func popoverDidClose(_ notification: Notification) {
-        pausePollingIfHidden()
+        applyPollingPolicy(popoverShown: false)
     }
 }
 
