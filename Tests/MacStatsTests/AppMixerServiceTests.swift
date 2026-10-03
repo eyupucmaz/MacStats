@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import XCTest
 @testable import MacStats
@@ -112,10 +113,12 @@ final class AppMixerServiceTests: XCTestCase {
     func testDoubleEnableStartsOnlyOneSession() async {
         let platform = FakeAppMixerPlatform(capability: .available, permission: .notDetermined)
         platform.requestGate = Gate()
+        platform.permissionRequested = expectation(description: "permission requested")
         let service = AppMixerService(platform: platform)
 
         let first = Task { await service.enable() }
-        await waitUntil { service.phase == .requestingPermission }
+        await fulfillment(of: [platform.permissionRequested!], timeout: 5)
+        XCTAssertEqual(service.phase, .requestingPermission)
         await service.enable()
         XCTAssertTrue(service.isBusy)
         platform.requestGate?.open()
@@ -129,10 +132,12 @@ final class AppMixerServiceTests: XCTestCase {
     func testDisableWhileWaitingForPermissionNeverStarts() async {
         let platform = FakeAppMixerPlatform(capability: .available, permission: .notDetermined)
         platform.requestGate = Gate()
+        platform.permissionRequested = expectation(description: "permission requested")
         let service = AppMixerService(platform: platform)
 
         let enabling = Task { await service.enable() }
-        await waitUntil { service.phase == .requestingPermission }
+        await fulfillment(of: [platform.permissionRequested!], timeout: 5)
+        XCTAssertEqual(service.phase, .requestingPermission)
         service.disable()
         platform.requestGate?.open()
         await enabling.value
@@ -145,10 +150,12 @@ final class AppMixerServiceTests: XCTestCase {
         let platform = FakeAppMixerPlatform(capability: .available, permission: .authorized)
         platform.discovered = [music]
         platform.startGate = Gate()
+        platform.startCalled = expectation(description: "session start requested")
         let service = AppMixerService(platform: platform)
 
         let enabling = Task { await service.enable() }
-        await waitUntil { platform.startCount == 1 }
+        await fulfillment(of: [platform.startCalled!], timeout: 5)
+        XCTAssertEqual(service.phase, .starting)
         service.disable()
         platform.startGate?.open()
         await enabling.value
@@ -169,7 +176,7 @@ final class AppMixerServiceTests: XCTestCase {
 
         platform.discovered = [music, safari]
         platform.onEvent?(.processesChanged)
-        await waitUntil { service.processes.count == 2 }
+        await waitFor(service.$processes, "rebuilt with both apps") { $0.count == 2 }
 
         XCTAssertEqual(platform.startCount, 2)
         XCTAssertEqual(platform.lastRetained.map(\.gain), [0.3])
@@ -212,7 +219,7 @@ final class AppMixerServiceTests: XCTestCase {
         XCTAssertEqual(platform.stopCount, 1)
 
         platform.onEvent?(.didWake)
-        await waitUntil { service.isRunning }
+        await waitFor(service.$phase, "restarted after wake") { $0 == .running }
         XCTAssertEqual(platform.startCount, 2)
     }
 
@@ -220,19 +227,24 @@ final class AppMixerServiceTests: XCTestCase {
         let platform = FakeAppMixerPlatform(capability: .available, permission: .authorized)
         let service = AppMixerService(platform: platform)
 
+        // Both events are handled synchronously when the mixer is off: nothing
+        // is scheduled that could start it later.
         platform.onEvent?(.willSleep)
         platform.onEvent?(.didWake)
-        await Task.yield()
 
         XCTAssertFalse(service.isRunning)
         XCTAssertEqual(platform.startCount, 0)
     }
 
-    private func waitUntil(_ condition: () -> Bool, file: StaticString = #filePath, line: UInt = #line) async {
-        for _ in 0..<500 where !condition() {
-            try? await Task.sleep(nanoseconds: 1_000_000)
-        }
-        XCTAssertTrue(condition(), "condition not reached", file: file, line: line)
+    /// Waits for a published value matching `predicate`, without polling. The
+    /// current value counts, and the service only changes on the main actor,
+    /// which this test holds until it awaits here.
+    private func waitFor<Value>(_ publisher: Published<Value>.Publisher, _ description: String,
+                                where predicate: @escaping (Value) -> Bool) async {
+        let reached = expectation(description: description)
+        let subscription = publisher.first(where: predicate).sink { _ in reached.fulfill() }
+        await fulfillment(of: [reached], timeout: 5)
+        subscription.cancel()
     }
 }
 
@@ -272,6 +284,9 @@ private final class FakeAppMixerPlatform: AppMixerPlatform, @unchecked Sendable 
     var requestResult: AppMixerPermission = .authorized
     var requestGate: Gate?
     var startGate: Gate?
+    /// Fulfilled when the service calls in, before any gate is waited on.
+    var permissionRequested: XCTestExpectation?
+    var startCalled: XCTestExpectation?
     var startError: Error?
     var discovered: [AppMixerProcess] = []
     var permissionRequestCount = 0
@@ -287,6 +302,7 @@ private final class FakeAppMixerPlatform: AppMixerPlatform, @unchecked Sendable 
 
     func requestPermission() async -> AppMixerPermission {
         permissionRequestCount += 1
+        permissionRequested?.fulfill()
         await requestGate?.wait()
         permission = requestResult
         return requestResult
@@ -295,6 +311,7 @@ private final class FakeAppMixerPlatform: AppMixerPlatform, @unchecked Sendable 
     func start(retaining: [AppMixerProcess]) async throws -> [AppMixerProcess] {
         startCount += 1
         lastRetained = retaining
+        startCalled?.fulfill()
         await startGate?.wait()
         if let startError { throw startError }
         return discovered.map { process in retaining.first { $0.processID == process.processID } ?? process }
