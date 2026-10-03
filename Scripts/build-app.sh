@@ -148,8 +148,11 @@ plutil -lint "${CONTENTS_DIR}/Info.plist" >/dev/null || die "staged Info.plist i
 # ---------------------------------------------------------------------------
 # 4. Sign and verify the finished bundle.
 # ---------------------------------------------------------------------------
+# The bundle has no nested code (verify-app.sh enforces this), so one signature
+# over the bundle is enough. Do not add --deep: if nested code is ever added,
+# sign each item explicitly, inside out, before signing the bundle.
 info "Signing…"
-sign_args=(--force --deep --options runtime --sign "${CODE_SIGN_IDENTITY}")
+sign_args=(--force --options runtime --sign "${CODE_SIGN_IDENTITY}")
 if [ "${CODE_SIGN_TIMESTAMP}" = 1 ]; then
     sign_args+=(--timestamp)
 fi

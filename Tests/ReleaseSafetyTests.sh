@@ -156,6 +156,303 @@ test_ci_hardening() {
     done
 }
 
+test_release_gates() {
+    local workflow='.github/workflows/release.yml'
+    local file
+
+    require_literal "${workflow}" 'bash Scripts/require-ci-success.sh "${GITHUB_REPOSITORY}" "${tag_commit}"' \
+        'release requires CI to have passed on the tagged commit'
+    require_literal "${workflow}" 'actions: read' \
+        'release build job may read the CI runs of the tagged commit'
+    require_literal "${workflow}" 'environment: release' \
+        'publish job deploys through the protected release environment'
+    require_literal "${workflow}" 'if [ "${GITHUB_REF}" != "refs/tags/${RELEASE_TAG}" ]; then' \
+        'release runs only from the tag ref the release environment accepts'
+    if /usr/bin/awk '
+        /^permissions:/ { top = 1; next }
+        top && /^[^ ]/ { top = 0 }
+        top && /actions:/ { found = 1 }
+        END { exit !found }
+    ' "${REPO_ROOT}/${workflow}"; then
+        fail 'release workflow does not grant actions access workflow-wide'
+    else
+        pass 'release workflow does not grant actions access workflow-wide'
+    fi
+
+    for file in '.github/workflows/ci.yml' '.github/workflows/release.yml' 'Makefile'; do
+        require_literal "${file}" 'bash Scripts/build-number.sh' \
+            "${file} derives the build number from the commit history"
+        forbid_literal "${file}" 'GITHUB_RUN_NUMBER' \
+            "${file} does not use the CI run number as the build number"
+    done
+    require_literal '.github/workflows/ci.yml' 'fetch-depth: 0' \
+        'CI packaging checks out the full history for the build number'
+
+    forbid_literal 'Scripts/build-app.sh' 'codesign --deep' \
+        'build-app.sh does not sign with codesign --deep'
+    forbid_literal 'Scripts/build-app.sh' '--force --deep' \
+        'build-app.sh signing arguments do not include --deep'
+    require_literal 'Scripts/verify-app.sh' 'ALLOWED_ENTITLEMENTS=()' \
+        'the shipped entitlement allowlist is empty'
+}
+
+# A fake gh that replays canned `gh api --jq` output: response file N answers call N,
+# `default` answers later calls, and a `fail` file makes every call fail.
+write_fake_gh() {
+    printf '%s\n' \
+        '#!/bin/bash' \
+        'count=$(( $(cat "${MACSTATS_GH_COUNT}") + 1 ))' \
+        'printf '\''%s\n'\'' "${count}" > "${MACSTATS_GH_COUNT}"' \
+        'printf '\''%s\n'\'' "$*" >> "${MACSTATS_GH_LOG}"' \
+        '[ -f "${MACSTATS_GH_RESPONSES}/fail" ] && exit 1' \
+        'response="${MACSTATS_GH_RESPONSES}/${count}"' \
+        '[ -f "${response}" ] || response="${MACSTATS_GH_RESPONSES}/default"' \
+        'cat "${response}"' \
+        > "$1/gh"
+    chmod +x "$1/gh"
+}
+
+run_require_ci_success() {
+    local case_root="$1"
+    shift
+    printf '0\n' > "${case_root}/count"
+    : > "${case_root}/gh.log"
+    if PATH="${case_root}/bin:${PATH}" \
+        MACSTATS_GH_COUNT="${case_root}/count" \
+        MACSTATS_GH_LOG="${case_root}/gh.log" \
+        MACSTATS_GH_RESPONSES="${case_root}/responses" \
+        CI_WAIT_SECONDS=0 CI_WAIT_ATTEMPTS=3 CI_MISSING_ATTEMPTS=2 \
+        /bin/bash "${REPO_ROOT}/Scripts/require-ci-success.sh" "$@" \
+        > "${case_root}/output.log" 2>&1
+    then
+        return 0
+    else
+        return $?
+    fi
+}
+
+new_ci_case() {
+    local case_root="${TEST_ROOT}/ci-gate/$1"
+    mkdir -p "${case_root}/bin" "${case_root}/responses"
+    write_fake_gh "${case_root}/bin"
+    : > "${case_root}/responses/default"
+    printf '%s\n' "${case_root}"
+}
+
+test_require_ci_success() {
+    local sha='0123456789abcdef0123456789abcdef01234567'
+    local repo='eyupucmaz/MacStats'
+    local case_root status
+
+    case_root="$(new_ci_case success)"
+    printf '%s\n' '11 completed failure' '12 completed success' > "${case_root}/responses/default"
+    if run_require_ci_success "${case_root}" "${repo}" "${sha}" && \
+        /usr/bin/grep -Fq "repos/${repo}/actions/workflows/ci.yml/runs?head_sha=${sha}&event=push" "${case_root}/gh.log"
+    then
+        pass 'CI gate accepts a commit with a successful push run of ci.yml'
+    else
+        fail 'CI gate accepts a commit with a successful push run of ci.yml'
+    fi
+
+    case_root="$(new_ci_case failure)"
+    printf '%s\n' '21 completed failure' '22 completed cancelled' > "${case_root}/responses/default"
+    if run_require_ci_success "${case_root}" "${repo}" "${sha}"; then status=0; else status=$?; fi
+    if [ "${status}" -ne 0 ] && [ "$(cat "${case_root}/count")" = 1 ] && \
+        /usr/bin/grep -Fq 'did not succeed' "${case_root}/output.log"
+    then
+        pass 'CI gate rejects a commit whose CI runs all failed, without waiting'
+    else
+        fail 'CI gate rejects a commit whose CI runs all failed, without waiting'
+    fi
+
+    case_root="$(new_ci_case pending-then-success)"
+    printf '%s\n' '31 in_progress none' > "${case_root}/responses/1"
+    printf '%s\n' '31 completed success' > "${case_root}/responses/default"
+    if run_require_ci_success "${case_root}" "${repo}" "${sha}" && [ "$(cat "${case_root}/count")" = 2 ]; then
+        pass 'CI gate waits for a running CI run and accepts its success'
+    else
+        fail 'CI gate waits for a running CI run and accepts its success'
+    fi
+
+    case_root="$(new_ci_case pending-forever)"
+    printf '%s\n' '41 queued none' > "${case_root}/responses/default"
+    if run_require_ci_success "${case_root}" "${repo}" "${sha}"; then status=0; else status=$?; fi
+    if [ "${status}" -ne 0 ] && [ "$(cat "${case_root}/count")" = 3 ] && \
+        /usr/bin/grep -Fq 'is still running' "${case_root}/output.log"
+    then
+        pass 'CI gate gives up after CI_WAIT_ATTEMPTS checks of a pending run'
+    else
+        fail 'CI gate gives up after CI_WAIT_ATTEMPTS checks of a pending run'
+    fi
+
+    case_root="$(new_ci_case missing)"
+    if run_require_ci_success "${case_root}" "${repo}" "${sha}"; then status=0; else status=$?; fi
+    if [ "${status}" -ne 0 ] && [ "$(cat "${case_root}/count")" = 2 ] && \
+        /usr/bin/grep -Fq 'has no push run' "${case_root}/output.log"
+    then
+        pass 'CI gate rejects a commit that never ran CI after CI_MISSING_ATTEMPTS checks'
+    else
+        fail 'CI gate rejects a commit that never ran CI after CI_MISSING_ATTEMPTS checks'
+    fi
+
+    case_root="$(new_ci_case api-failure)"
+    : > "${case_root}/responses/fail"
+    if run_require_ci_success "${case_root}" "${repo}" "${sha}"; then status=0; else status=$?; fi
+    if [ "${status}" -ne 0 ] && /usr/bin/grep -Fq 'could not list' "${case_root}/output.log"; then
+        pass 'CI gate fails closed when the runs API is unavailable'
+    else
+        fail 'CI gate fails closed when the runs API is unavailable'
+    fi
+
+    case_root="$(new_ci_case invalid-sha)"
+    if run_require_ci_success "${case_root}" "${repo}" 'v0.2.0'; then status=0; else status=$?; fi
+    if [ "${status}" -eq 64 ] && [ "$(cat "${case_root}/count")" = 0 ]; then
+        pass 'CI gate requires a full commit SHA before calling the API'
+    else
+        fail 'CI gate requires a full commit SHA before calling the API'
+    fi
+}
+
+test_build_number() {
+    local repo_dir="${TEST_ROOT}/build-number/repo"
+    local clone_dir="${TEST_ROOT}/build-number/shallow"
+    local output status message
+
+    mkdir -p "${repo_dir}"
+    git -C "${repo_dir}" init -q
+    for message in one two three; do
+        git -C "${repo_dir}" -c user.name=probe -c user.email=probe@example.invalid \
+            -c commit.gpgsign=false commit -q --allow-empty -m "${message}"
+    done
+
+    if output="$(/bin/bash "${REPO_ROOT}/Scripts/build-number.sh" "${repo_dir}" 2>&1)" && \
+        [ "${output}" = 3 ]
+    then
+        pass 'build number is the number of commits reachable from HEAD'
+    else
+        fail 'build number is the number of commits reachable from HEAD'
+    fi
+
+    git clone -q --depth 1 "file://${repo_dir}" "${clone_dir}"
+    if output="$(/bin/bash "${REPO_ROOT}/Scripts/build-number.sh" "${clone_dir}" 2>&1)"; then
+        status=0
+    else
+        status=$?
+    fi
+    if [ "${status}" -ne 0 ] && printf '%s\n' "${output}" | /usr/bin/grep -Fq 'shallow clone'; then
+        pass 'build number refuses a shallow clone'
+    else
+        fail 'build number refuses a shallow clone'
+    fi
+}
+
+# Builds a minimal signed MacStats.app that satisfies every other verify-app.sh check.
+make_probe_app() {
+    local app="$1"
+    local entitlements="${2:-}"
+    local contents="${app}/Contents"
+    local sign_args=(--force --options runtime --sign -)
+
+    mkdir -p "${contents}/MacOS" "${contents}/Resources/MacStats_MacStats.bundle"
+    printf 'int main(void) { return 0; }\n' | \
+        xcrun clang -arch arm64 -x c - -o "${contents}/MacOS/MacStats"
+    cp "${REPO_ROOT}/Info.plist" "${contents}/Info.plist"
+    : > "${contents}/Resources/Assets.car"
+    : > "${contents}/Resources/AppIcon.icns"
+    if [ -n "${entitlements}" ]; then
+        sign_args+=(--entitlements "${entitlements}")
+    fi
+    codesign "${sign_args[@]}" "${app}" 2>/dev/null
+}
+
+run_verify_app() {
+    local script="$1"
+    local app="$2"
+    local output="$3"
+    local version
+
+    version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "${REPO_ROOT}/Info.plist")"
+    if /bin/bash "${script}" "${app}" "${version}" 1 arm64 > "${output}" 2>&1; then
+        return 0
+    else
+        return $?
+    fi
+}
+
+test_verify_app_allowlist() {
+    local probe_root="${TEST_ROOT}/verify-app"
+    local entitlements="${probe_root}/audio.entitlements"
+    local allowing_script="${probe_root}/verify-app-allowing-audio-input.sh"
+    local entitlement='com.apple.security.device.audio-input'
+    local status
+
+    mkdir -p "${probe_root}"
+    printf '%s\n' \
+        '<?xml version="1.0" encoding="UTF-8"?>' \
+        '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
+        '<plist version="1.0"><dict>' \
+        "<key>${entitlement}</key><true/>" \
+        '</dict></plist>' \
+        > "${entitlements}"
+    sed "s/^ALLOWED_ENTITLEMENTS=()\$/ALLOWED_ENTITLEMENTS=(${entitlement})/" \
+        "${REPO_ROOT}/Scripts/verify-app.sh" > "${allowing_script}"
+
+    make_probe_app "${probe_root}/plain/MacStats.app"
+    if run_verify_app "${REPO_ROOT}/Scripts/verify-app.sh" "${probe_root}/plain/MacStats.app" \
+        "${probe_root}/plain.log"
+    then
+        pass 'verify-app accepts a signed app without entitlements'
+    else
+        sed 's/^/    /' "${probe_root}/plain.log" >&2
+        fail 'verify-app accepts a signed app without entitlements'
+    fi
+
+    make_probe_app "${probe_root}/entitled/MacStats.app" "${entitlements}"
+    if run_verify_app "${REPO_ROOT}/Scripts/verify-app.sh" "${probe_root}/entitled/MacStats.app" \
+        "${probe_root}/entitled.log"
+    then
+        status=0
+    else
+        status=$?
+    fi
+    if [ "${status}" -ne 0 ] && /usr/bin/grep -Fq "allowlist in Scripts/verify-app.sh: ${entitlement}" \
+        "${probe_root}/entitled.log"
+    then
+        pass 'verify-app rejects and names an entitlement missing from the allowlist'
+    else
+        fail 'verify-app rejects and names an entitlement missing from the allowlist'
+    fi
+
+    if /usr/bin/grep -Fqx "ALLOWED_ENTITLEMENTS=(${entitlement})" "${allowing_script}" && \
+        run_verify_app "${allowing_script}" "${probe_root}/entitled/MacStats.app" \
+            "${probe_root}/allowed.log"
+    then
+        pass 'verify-app accepts an entitlement once it is added to the allowlist'
+    else
+        sed 's/^/    /' "${probe_root}/allowed.log" >&2 || true
+        fail 'verify-app accepts an entitlement once it is added to the allowlist'
+    fi
+
+    make_probe_app "${probe_root}/nested/MacStats.app"
+    cp "${probe_root}/nested/MacStats.app/Contents/MacOS/MacStats" \
+        "${probe_root}/nested/MacStats.app/Contents/Resources/helper"
+    codesign --force --options runtime --sign - "${probe_root}/nested/MacStats.app" 2>/dev/null
+    if run_verify_app "${REPO_ROOT}/Scripts/verify-app.sh" "${probe_root}/nested/MacStats.app" \
+        "${probe_root}/nested.log"
+    then
+        status=0
+    else
+        status=$?
+    fi
+    if [ "${status}" -ne 0 ] && /usr/bin/grep -Fq 'unexpected nested code' "${probe_root}/nested.log" && \
+        /usr/bin/grep -Fq 'Contents/Resources/helper' "${probe_root}/nested.log"
+    then
+        pass 'verify-app rejects nested code that build-app.sh would not sign explicitly'
+    else
+        fail 'verify-app rejects nested code that build-app.sh would not sign explicitly'
+    fi
+}
+
 next_minor_version() {
     local major minor
     IFS=. read -r major minor _ <<< "$1"
@@ -330,6 +627,10 @@ test_release_workflow_policy
 test_documented_shell_validation
 test_version_comes_from_info_plist
 test_ci_hardening
+test_release_gates
+test_require_ci_success
+test_build_number
+test_verify_app_allowlist
 test_strict_source_version_validation
 test_detach_failure_handling
 

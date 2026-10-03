@@ -6,6 +6,17 @@
 
 set -euo pipefail
 
+# Entitlements the signed app may carry, by key. Empty: MacStats ships without
+# entitlements, so any entitlement in the signature fails verification.
+#
+# To ship an entitlement:
+#   1. Create an entitlements plist and pass it to codesign in Scripts/build-app.sh
+#      (`--entitlements <file>`).
+#   2. Add its key here, for example:
+#        ALLOWED_ENTITLEMENTS=(com.apple.security.device.audio-input)
+#   3. Explain in the pull request why the app needs it (see CONTRIBUTING.md).
+ALLOWED_ENTITLEMENTS=()
+
 usage() {
     printf 'usage: %s <path-to-MacStats.app> <expected-version> <expected-build> [expected-archs]\n' "$0" >&2
     exit 64
@@ -55,9 +66,49 @@ NORMALIZED_EXPECTED_ARCHS="$(normalize_arch_set "${EXPECTED_ARCHS}")"
 
 codesign --verify --strict --deep --verbose=2 "${APP_BUNDLE}"
 
-ENTITLEMENTS="$(codesign -d --entitlements :- "${APP_BUNDLE}" 2>&1)"
-if printf '%s\n' "${ENTITLEMENTS}" | grep -q '<key>'; then
-    die "unexpected entitlements in ${APP_BUNDLE}"
+# Everything except the main executable must be data: build-app.sh signs only the
+# bundle, so nested code would need its own explicit signature first.
+NESTED_CODE=()
+while IFS= read -r -d '' bundle_file; do
+    [ "${bundle_file}" = "${EXECUTABLE}" ] && continue
+    if file -b "${bundle_file}" | grep -q 'Mach-O'; then
+        NESTED_CODE+=("${bundle_file#"${APP_BUNDLE}/"}")
+    fi
+done < <(find "${CONTENTS_DIR}" -type f -print0)
+if [ "${#NESTED_CODE[@]}" -ne 0 ]; then
+    die "unexpected nested code; sign it explicitly in build-app.sh first: ${NESTED_CODE[*]}"
+fi
+
+ENTITLEMENTS_PLIST="$(mktemp -t macstats-entitlements)"
+trap 'rm -f -- "${ENTITLEMENTS_PLIST}"' EXIT
+codesign -d --entitlements - --xml "${APP_BUNDLE}" > "${ENTITLEMENTS_PLIST}" 2>/dev/null \
+    || die "could not read the entitlements of ${APP_BUNDLE}"
+UNEXPECTED_ENTITLEMENTS=()
+if [ -s "${ENTITLEMENTS_PLIST}" ]; then
+    plutil -convert xml1 "${ENTITLEMENTS_PLIST}" \
+        || die "entitlements of ${APP_BUNDLE} are not a valid property list"
+    # Read the top-level keys of the entitlements dictionary, one per line.
+    while IFS= read -r entitlement; do
+        allowed=0
+        for allowed_entitlement in ${ALLOWED_ENTITLEMENTS[@]+"${ALLOWED_ENTITLEMENTS[@]}"}; do
+            if [ "${entitlement}" = "${allowed_entitlement}" ]; then
+                allowed=1
+                break
+            fi
+        done
+        [ "${allowed}" = 1 ] || UNEXPECTED_ENTITLEMENTS+=("${entitlement}")
+    done < <(awk '
+        /<dict>/ { depth++ }
+        /<\/dict>/ { depth-- }
+        depth == 1 && /<key>/ {
+            sub(/.*<key>/, "")
+            sub(/<\/key>.*/, "")
+            print
+        }
+    ' "${ENTITLEMENTS_PLIST}")
+fi
+if [ "${#UNEXPECTED_ENTITLEMENTS[@]}" -ne 0 ]; then
+    die "entitlements missing from the allowlist in Scripts/verify-app.sh: ${UNEXPECTED_ENTITLEMENTS[*]}"
 fi
 
 printf 'Verified: %s (version %s, build %s, architectures: %s)\n' \
