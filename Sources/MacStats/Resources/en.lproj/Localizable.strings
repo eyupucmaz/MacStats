@@ -552,3 +552,29 @@
 "gigabits" = "gigabits";
 "megabits" = "megabits";
 "kilobits" = "kilobits";
+
+/* MARK: Fan detail (#31) */
+
+/* Fan page: section listing every fan */
+"Fans" = "Fans";
+/* Fan page: shown on Macs without a fan */
+"No fan" = "No fan";
+"This Mac is cooled passively." = "This Mac is cooled passively.";
+/* Fan page: shown when the SMC reports no fan speeds at all */
+"macOS did not report fan speeds." = "macOS did not report fan speeds.";
+/* Fan page: how many fans the Mac has */
+"Number of fans" = "Number of fans";
+/* Fan page: one of several fans, numbered from 1, e.g. "Fan 2" */
+"Fan %@" = "Fan %@";
+/* Fan page: speed limits and the speed the system is steering a fan towards */
+"Minimum" = "Minimum";
+"Maximum" = "Maximum";
+"Target" = "Target";
+/* Fan page: VoiceOver label of the gauge of a fan's speed against its maximum */
+"Speed" = "Speed";
+/* Fan page: under the gauge; the argument is a percentage such as "40%" */
+"%@ of max" = "%@ of max";
+/* Fan page, VoiceOver: the gauge, e.g. "40 percent of maximum speed" */
+"%@ percent of maximum speed" = "%@ percent of maximum speed";
+/* Fan page: caption under the chart on Macs with two fans */
+"Fan 2 is recorded while this page is open." = "Fan 2 is recorded while this page is open.";
