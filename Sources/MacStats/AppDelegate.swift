@@ -2,6 +2,7 @@ import Cocoa
 import Combine
 import SwiftUI
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private static let warmUpSeconds = 2.0
 

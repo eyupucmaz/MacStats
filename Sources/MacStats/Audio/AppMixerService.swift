@@ -145,13 +145,9 @@ final class AppMixerService: ObservableObject {
         }
     }
 
-    /// Nonisolated only so the (nonisolated) `AppDelegate` termination path
-    /// can call it; it must still be called on the main thread.
-    nonisolated func disable() {
-        MainActor.assumeIsolated {
-            resumesAfterWake = false
-            stop(message: nil)
-        }
+    func disable() {
+        resumesAfterWake = false
+        stop(message: nil)
     }
 
     /// Re-reads the capture permission (e.g. when the Audio tab appears) and
