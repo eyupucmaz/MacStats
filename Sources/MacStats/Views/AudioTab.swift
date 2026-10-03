@@ -14,9 +14,9 @@ struct AudioTab: View {
             case .empty:
                 emptyState
             case .devices:
-                deviceSection(title: "Output", direction: .output)
+                deviceSection(title: L10n.string("Output"), direction: .output)
                 Divider()
-                deviceSection(title: "Input", direction: .input)
+                deviceSection(title: L10n.string("Input"), direction: .input)
                 Divider()
                 appMixerSection
             }
@@ -33,11 +33,11 @@ struct AudioTab: View {
 
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("No Audio Devices", systemImage: "speaker.slash").font(.headline)
+            Label(L10n.string("No Audio Devices"), systemImage: "speaker.slash").font(.headline)
             Text(AudioTabPresentation.emptyDevicesMessage)
                 .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            Button("Refresh") { audioDevices.refresh() }
+            Button(L10n.string("Refresh")) { audioDevices.refresh() }
                 .accessibilityLabel(AudioTabPresentation.refreshLabel)
         }
     }
@@ -57,7 +57,7 @@ struct AudioTab: View {
             appMixerContent
                 .padding(.top, 4)
         } label: {
-            Label("App Mixer", systemImage: "slider.horizontal.3").font(.headline)
+            Label(L10n.string("App Mixer"), systemImage: "slider.horizontal.3").font(.headline)
         }
         .onAppear { appMixer.refreshPermission() }
     }
@@ -65,12 +65,12 @@ struct AudioTab: View {
     private var appMixerContent: some View {
         VStack(alignment: .leading, spacing: 8) {
             if appMixer.capability == .requiresMacOS142 {
-                Text("Application mixing requires macOS 14.2 or later.")
+                Text(AppMixerService.unsupportedMessage)
                     .font(.caption).foregroundStyle(.secondary)
             } else if appMixer.isRunning {
-                Button("Disable App Mixer") { appMixer.disable() }
+                Button(L10n.string("Disable App Mixer")) { appMixer.disable() }
                 if appMixer.processes.isEmpty {
-                    Text("No app is playing audio yet. Apps appear here when they start playing.")
+                    Text(L10n.string("No app is playing audio yet. Apps appear here when they start playing."))
                         .font(.caption).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 } else {
@@ -78,19 +78,19 @@ struct AudioTab: View {
                 }
             } else {
                 // Shown before the user enables the mixer, i.e. before macOS asks.
-                Text("To set each app's volume, MacStats captures the sound apps send to your output and plays it back at the levels you choose. Audio is processed in memory on this Mac only; nothing is recorded, saved or sent anywhere. Browser tabs are controlled as one browser app.")
+                Text(L10n.string("To set each app's volume, MacStats captures the sound apps send to your output and plays it back at the levels you choose. Audio is processed in memory on this Mac only; nothing is recorded, saved or sent anywhere. Browser tabs are controlled as one browser app."))
                     .font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 if appMixer.permission == .denied {
-                    Text("Audio capture is turned off for MacStats. Allow it in Privacy & Security under Screen & System Audio Recording, then enable the mixer again.")
+                    Text(L10n.string("Audio capture is turned off for MacStats. Allow it in Privacy & Security under Screen & System Audio Recording, then enable the mixer again."))
                         .font(.caption).foregroundStyle(.orange)
                         .fixedSize(horizontal: false, vertical: true)
-                    Button("Open System Settings") { NSWorkspace.shared.open(AppMixerService.privacySettingsURL) }
+                    Button(L10n.string("Open System Settings")) { NSWorkspace.shared.open(AppMixerService.privacySettingsURL) }
                 }
                 Button(enableTitle) { Task { await appMixer.enable() } }
                     .disabled(appMixer.isBusy)
                 if appMixer.phase == .requestingPermission {
-                    Text("macOS may ask for permission to record system audio. If this window closes, reopen MacStats to see the mixer.")
+                    Text(L10n.string("macOS may ask for permission to record system audio. If this window closes, reopen MacStats to see the mixer."))
                         .font(.caption).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -104,9 +104,9 @@ struct AudioTab: View {
 
     private var enableTitle: String {
         switch appMixer.phase {
-        case .requestingPermission: return "Waiting for Permission…"
-        case .starting: return "Starting…"
-        case .off, .running: return "Enable App Mixer"
+        case .requestingPermission: return L10n.string("Waiting for Permission…")
+        case .starting: return L10n.string("Starting…")
+        case .off, .running: return L10n.string("Enable App Mixer")
         }
     }
 
@@ -122,9 +122,9 @@ struct AudioTab: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .help(status.text)
-                    .accessibilityLabel("\(process.name) \(status.text)")
+                    .accessibilityLabel(AudioTabPresentation.statusLabel(for: process.name, status: status))
                 Spacer()
-                Toggle("Mute", isOn: Binding(
+                Toggle(L10n.string("Mute"), isOn: Binding(
                     get: { process.muted },
                     set: { appMixer.setMuted($0, for: process.processID) }
                 ))
@@ -158,7 +158,7 @@ struct AudioTab: View {
                 set: { id in if let id { audioDevices.selectDefaultDevice(id, direction: direction) } }
             )) {
                 if devices.isEmpty || selected == nil {
-                    Text(devices.isEmpty ? "No device available" : "None").tag(AudioObjectID?.none)
+                    Text(devices.isEmpty ? L10n.string("No device available") : L10n.string("None")).tag(AudioObjectID?.none)
                 }
                 ForEach(devices) { device in Text(device.name).tag(Optional(device.id)) }
             }
@@ -181,7 +181,7 @@ struct AudioTab: View {
         .disabled(audioDevices.state.outputVolume == nil)
         .accessibilityLabel(AudioTabPresentation.outputVolumeLabel)
         .accessibilityValue(AudioTabPresentation.volumeValue(level: volume, muted: audioDevices.state.outputMuted))
-        Toggle("Mute", isOn: Binding(
+        Toggle(L10n.string("Mute"), isOn: Binding(
             get: { audioDevices.state.outputMuted ?? false },
             set: { audioDevices.setOutputMuted($0) }
         ))

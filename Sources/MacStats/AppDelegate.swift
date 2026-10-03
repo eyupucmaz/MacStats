@@ -155,18 +155,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func makeStatusMenu() -> NSMenu {
         let menu = NSMenu()
 
-        let settings = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        let settings = NSMenuItem(title: L10n.string("Settings…"), action: #selector(openSettings), keyEquivalent: ",")
         settings.keyEquivalentModifierMask = [.command]
         settings.target = self
         menu.addItem(settings)
 
-        let about = NSMenuItem(title: "About MacStats", action: #selector(showAbout), keyEquivalent: "")
+        let about = NSMenuItem(title: L10n.string("About MacStats"), action: #selector(showAbout), keyEquivalent: "")
         about.target = self
         menu.addItem(about)
 
         menu.addItem(.separator())
 
-        let quit = NSMenuItem(title: "Quit MacStats", action: #selector(quitApp), keyEquivalent: "q")
+        let quit = NSMenuItem(title: L10n.string("Quit MacStats"), action: #selector(quitApp), keyEquivalent: "q")
         quit.keyEquivalentModifierMask = [.command]
         quit.target = self
         menu.addItem(quit)
@@ -187,12 +187,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let appItem = NSMenuItem()
         let appMenu = NSMenu()
 
-        let settings = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        let settings = NSMenuItem(title: L10n.string("Settings…"), action: #selector(openSettings), keyEquivalent: ",")
         settings.target = self
         appMenu.addItem(settings)
         appMenu.addItem(.separator())
 
-        let quit = NSMenuItem(title: "Quit MacStats", action: #selector(quitApp), keyEquivalent: "q")
+        let quit = NSMenuItem(title: L10n.string("Quit MacStats"), action: #selector(quitApp), keyEquivalent: "q")
         quit.target = self
         appMenu.addItem(quit)
 
@@ -215,7 +215,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 backing: .buffered,
                 defer: false
             )
-            window.title = "MacStats Settings"
+            window.title = L10n.string("MacStats Settings")
             window.isReleasedWhenClosed = false
             window.contentViewController = NSHostingController(rootView: view)
             window.delegate = self
@@ -234,7 +234,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .applicationName: "MacStats",
             .applicationVersion: SettingsView.versionString,
             .credits: NSAttributedString(
-                string: "Menu bar system monitor.",
+                string: L10n.string("Menu bar system monitor."),
                 attributes: [.font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)]
             )
         ])

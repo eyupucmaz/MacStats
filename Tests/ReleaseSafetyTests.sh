@@ -359,6 +359,12 @@ make_probe_app() {
     cp "${REPO_ROOT}/Info.plist" "${contents}/Info.plist"
     : > "${contents}/Resources/Assets.car"
     : > "${contents}/Resources/AppIcon.icns"
+    for localization in en tr; do
+        mkdir -p "${contents}/Resources/${localization}.lproj" \
+            "${contents}/Resources/MacStats_MacStats.bundle/${localization}.lproj"
+        : > "${contents}/Resources/${localization}.lproj/InfoPlist.strings"
+        : > "${contents}/Resources/MacStats_MacStats.bundle/${localization}.lproj/Localizable.strings"
+    done
     if [ -n "${entitlements}" ]; then
         sign_args+=(--entitlements "${entitlements}")
     fi
@@ -450,6 +456,24 @@ test_verify_app_allowlist() {
         pass 'verify-app rejects nested code that build-app.sh would not sign explicitly'
     else
         fail 'verify-app rejects nested code that build-app.sh would not sign explicitly'
+    fi
+
+    make_probe_app "${probe_root}/untranslated/MacStats.app"
+    rm "${probe_root}/untranslated/MacStats.app/Contents/Resources/MacStats_MacStats.bundle/tr.lproj/Localizable.strings"
+    codesign --force --options runtime --sign - "${probe_root}/untranslated/MacStats.app" 2>/dev/null
+    if run_verify_app "${REPO_ROOT}/Scripts/verify-app.sh" "${probe_root}/untranslated/MacStats.app" \
+        "${probe_root}/untranslated.log"
+    then
+        status=0
+    else
+        status=$?
+    fi
+    if [ "${status}" -ne 0 ] && \
+        /usr/bin/grep -Fq "Localizable.strings is missing for localization 'tr'" "${probe_root}/untranslated.log"
+    then
+        pass 'verify-app rejects a declared localization without its string table'
+    else
+        fail 'verify-app rejects a declared localization without its string table'
     fi
 }
 

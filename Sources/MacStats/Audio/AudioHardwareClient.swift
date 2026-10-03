@@ -10,8 +10,8 @@ enum AudioControlError: Error, Equatable {
     var message: String {
         switch self {
         case let .unsupportedControl(message), let .unwritableControl(message): return message
-        case .deviceUnavailable: return "No output device is currently available."
-        case let .osStatus(status): return "macOS could not change this audio setting (error \(status))."
+        case .deviceUnavailable: return L10n.string("No output device is currently available.")
+        case let .osStatus(status): return L10n.string("macOS could not change this audio setting (error \(String(status))).")
         }
     }
 }
@@ -137,10 +137,10 @@ struct AudioOutputControlDriver {
     private func settableElements(for selector: AudioObjectPropertySelector,
                                   deviceID: AudioObjectID) throws -> AudioOutputControlElements {
         guard let control = elements(for: selector, deviceID: deviceID) else {
-            throw AudioControlError.unsupportedControl("The selected device does not expose this audio control.")
+            throw AudioControlError.unsupportedControl(L10n.string("The selected device does not expose this audio control."))
         }
         guard control.isSettable else {
-            throw AudioControlError.unwritableControl("The selected device does not allow this audio control to change.")
+            throw AudioControlError.unwritableControl(L10n.string("The selected device does not allow this audio control to change."))
         }
         return control
     }
@@ -184,9 +184,11 @@ final class SystemAudioHardwareClient: AudioHardwareClient {
         let current = try readOutputControls(deviceID: outputID)
         let message: String?
         if output?.supportsVolume != true {
-            message = "\(output?.name ?? "The selected device") does not expose an adjustable volume control."
+            message = output.map { L10n.string("\($0.name) does not expose an adjustable volume control.") }
+                ?? L10n.string("The selected device does not expose an adjustable volume control.")
         } else if output?.supportsMute != true {
-            message = "\(output?.name ?? "The selected device") does not expose an adjustable mute control."
+            message = output.map { L10n.string("\($0.name) does not expose an adjustable mute control.") }
+                ?? L10n.string("The selected device does not expose an adjustable mute control.")
         } else {
             message = nil
         }
@@ -352,7 +354,7 @@ final class SystemAudioHardwareClient: AudioHardwareClient {
         var value: Unmanaged<CFString>?
         var byteCount = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
         guard AudioObjectGetPropertyData(id, &address, 0, nil, &byteCount, &value) == noErr,
-              let value else { return "Unknown device" }
+              let value else { return L10n.string("Unknown device") }
         return value.takeRetainedValue() as String
     }
 

@@ -12,9 +12,9 @@ enum LaunchAtLogin {
         var errorDescription: String? {
             switch self {
             case .unsupported:
-                return "Launch at Login only works when MacStats is installed as an app, not in a development build."
+                return L10n.string("Launch at Login only works when MacStats is installed as an app, not in a development build.")
             case .system(let message):
-                return "Couldn't change Launch at Login: \(message)"
+                return L10n.string("Couldn't change Launch at Login: \(message)")
             }
         }
     }
@@ -32,14 +32,14 @@ enum LaunchAtLogin {
     /// Human-readable state for the settings UI.
     static var statusDescription: String {
         guard isSupported else {
-            return "Not available in a development build. Install MacStats as an app to use it."
+            return L10n.string("Not available in a development build. Install MacStats as an app to use it.")
         }
         switch SMAppService.mainApp.status {
-        case .enabled: return "MacStats will open when you log in."
-        case .notRegistered: return "MacStats won't open automatically when you log in."
-        case .requiresApproval: return "Allow MacStats in System Settings › General › Login Items to finish turning this on."
-        case .notFound: return "macOS can't find MacStats' login item. Move MacStats to the Applications folder and try again."
-        @unknown default: return "Couldn't check whether MacStats opens at login."
+        case .enabled: return L10n.string("MacStats will open when you log in.")
+        case .notRegistered: return L10n.string("MacStats won't open automatically when you log in.")
+        case .requiresApproval: return L10n.string("Allow MacStats in System Settings › General › Login Items to finish turning this on.")
+        case .notFound: return L10n.string("macOS can't find MacStats' login item. Move MacStats to the Applications folder and try again.")
+        @unknown default: return L10n.string("Couldn't check whether MacStats opens at login.")
         }
     }
 

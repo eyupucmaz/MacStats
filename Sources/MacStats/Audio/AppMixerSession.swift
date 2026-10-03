@@ -42,18 +42,18 @@ final class AppMixerSession {
                 description.muteBehavior = .mutedWhenTapped
                 var tapID = AudioObjectID(kAudioObjectUnknown)
                 guard AudioHardwareCreateProcessTap(description, &tapID) == noErr else {
-                    throw AppMixerError.unavailable("MacStats could not create an application audio tap.")
+                    throw AppMixerError.unavailable(L10n.string("MacStats could not create an application audio tap."))
                 }
                 tapIDs.append(tapID)
                 tapUIDs.append(try AppMixerCoreAudio.string(of: tapID, selector: kAudioTapPropertyUID))
                 let format = try AppMixerCoreAudio.tapFormat(tapID)
                 if let tapFormat, tapFormat.mChannelsPerFrame != format.mChannelsPerFrame || tapFormat.mFormatFlags != format.mFormatFlags {
-                    throw AppMixerError.unavailable("MacStats received an unexpected application audio format.")
+                    throw AppMixerError.unavailable(L10n.string("MacStats received an unexpected application audio format."))
                 }
                 tapFormat = format
             }
             guard let tapFormat, AppMixerCoreAudio.isFloat32(tapFormat) else {
-                throw AppMixerError.unavailable("MacStats received an unexpected application audio format.")
+                throw AppMixerError.unavailable(L10n.string("MacStats received an unexpected application audio format."))
             }
 
             // The output device is the main sub-device, so it clocks the
@@ -71,7 +71,7 @@ final class AppMixerSession {
                 }
             ]
             guard AudioHardwareCreateAggregateDevice(description as CFDictionary, &aggregateID) == noErr else {
-                throw AppMixerError.unavailable("MacStats could not create the application mixer output.")
+                throw AppMixerError.unavailable(L10n.string("MacStats could not create the application mixer output."))
             }
 
             let buffersPerTap = tapFormat.mFormatFlags & kAudioFormatFlagIsNonInterleaved != 0
@@ -85,10 +85,10 @@ final class AppMixerSession {
                 renderer.render(input: inputData, output: outputData)
             }
             guard status == noErr, let ioProcID else {
-                throw AppMixerError.unavailable("MacStats could not prepare the application mixer stream.")
+                throw AppMixerError.unavailable(L10n.string("MacStats could not prepare the application mixer stream."))
             }
             guard AudioDeviceStart(aggregateID, ioProcID) == noErr else {
-                throw AppMixerError.unavailable("MacStats could not start the application mixer stream.")
+                throw AppMixerError.unavailable(L10n.string("MacStats could not start the application mixer stream."))
             }
             started = true
         } catch {
@@ -156,7 +156,7 @@ enum AppMixerCoreAudio {
         var address = address(selector)
         var value: Unmanaged<CFString>?; var size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
         guard AudioObjectGetPropertyData(id, &address, 0, nil, &size, &value) == noErr, let value else {
-            throw AppMixerError.unavailable("MacStats could not identify an audio device.")
+            throw AppMixerError.unavailable(L10n.string("MacStats could not identify an audio device."))
         }
         return value.takeRetainedValue() as String
     }
@@ -172,7 +172,7 @@ enum AppMixerCoreAudio {
         var address = address(kAudioTapPropertyFormat)
         var format = AudioStreamBasicDescription(); var size = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
         guard AudioObjectGetPropertyData(tapID, &address, 0, nil, &size, &format) == noErr else {
-            throw AppMixerError.unavailable("MacStats could not read the application audio format.")
+            throw AppMixerError.unavailable(L10n.string("MacStats could not read the application audio format."))
         }
         return format
     }
@@ -182,12 +182,12 @@ enum AppMixerCoreAudio {
     /// write floats into an integer stream.
     static func requireFloatOutput(_ deviceID: AudioObjectID) throws {
         let streams = objectIDs(of: deviceID, selector: kAudioDevicePropertyStreams, scope: kAudioObjectPropertyScopeOutput)
-        guard !streams.isEmpty else { throw AppMixerError.unavailable("The current output device has no output streams.") }
+        guard !streams.isEmpty else { throw AppMixerError.unavailable(L10n.string("The current output device has no output streams.")) }
         for stream in streams {
             var address = address(kAudioStreamPropertyVirtualFormat)
             var format = AudioStreamBasicDescription(); var size = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
             guard AudioObjectGetPropertyData(stream, &address, 0, nil, &size, &format) == noErr, isFloat32(format) else {
-                throw AppMixerError.unavailable("The current output device uses an audio format the mixer does not support.")
+                throw AppMixerError.unavailable(L10n.string("The current output device uses an audio format the mixer does not support."))
             }
         }
     }
@@ -198,7 +198,7 @@ enum AppMixerCoreAudio {
     static func stereoPair(of outputDeviceID: AudioObjectID) throws -> (AppMixerChannel, AppMixerChannel) {
         let channelsPerBuffer = outputChannelsPerBuffer(outputDeviceID)
         let total = channelsPerBuffer.reduce(0, +)
-        guard total > 0 else { throw AppMixerError.unavailable("The current output device has no output channels.") }
+        guard total > 0 else { throw AppMixerError.unavailable(L10n.string("The current output device has no output channels.")) }
 
         var preferred: [UInt32] = [1, 2]
         var address = address(kAudioDevicePropertyPreferredChannelsForStereo, scope: kAudioObjectPropertyScopeOutput)

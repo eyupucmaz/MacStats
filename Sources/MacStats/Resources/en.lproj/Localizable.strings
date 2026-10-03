@@ -1,0 +1,271 @@
+/*
+  Localizable.strings (English)
+  MacStats
+
+  The English text is the key (see Sources/MacStats/Localization.swift), so
+  en.lproj and tr.lproj must hold exactly the same keys; LocalizationTests
+  checks that, and that every L10n.string("…") in the sources has an entry.
+
+  Deliberately NOT localized, and so not listed here:
+  - The three-letter menu bar labels CPU, GPU, RAM, DSK, NET, BAT, FAN, TMP:
+    the menu bar must stay compact and aligned, and they read as technical
+    abbreviations in Turkish too.
+  - Unit symbols (B, KB, MB, GB, TB, °C) and the menu bar's compact values
+    ("8.2G", "812K"); only their spoken VoiceOver forms are translated.
+  - The app name "MacStats" and device or app names reported by macOS.
+
+  Format specifiers: every argument is %@, text. Numbers arrive already
+  formatted for the user's region, so "23,4" stays "23,4". Use positional
+  forms such as %2$@ to reorder arguments, and %% for a literal percent sign.
+*/
+
+
+/* MARK: Status item menu, main menu and About panel */
+
+"Settings…" = "Settings…";
+"About MacStats" = "About MacStats";
+"Quit MacStats" = "Quit MacStats";
+/* Settings window title */
+"MacStats Settings" = "MacStats Settings";
+/* About panel credits and the About section in Settings */
+"Menu bar system monitor." = "Menu bar system monitor.";
+
+/* MARK: Popover */
+
+/* VoiceOver label of the System/Audio tab picker */
+"MacStats section" = "MacStats section";
+/* Popover tab */
+"System" = "System";
+/* Popover tab */
+"Audio" = "Audio";
+"All stats are hidden. Enable some in Settings." = "All stats are hidden. Enable some in Settings.";
+/* Tooltip of the gear button */
+"Settings" = "Settings";
+/* VoiceOver label of the gear button */
+"Open Settings" = "Open Settings";
+/* Tooltip of the ⋯ button */
+"More" = "More";
+/* VoiceOver label of the ⋯ button */
+"More actions" = "More actions";
+
+/* MARK: Stat card titles. CPU, GPU and RAM stay as they are in Turkish. */
+
+"CPU" = "CPU";
+"GPU" = "GPU";
+"RAM" = "RAM";
+"Battery" = "Battery";
+"Disk" = "Disk";
+"Network" = "Network";
+"Fan" = "Fan";
+/* Short title of the temperature card */
+"Temp" = "Temp";
+
+/* MARK: Stat card values */
+
+/* A formatted number with a percent sign, in cards and the menu bar: "23.4%". Turkish puts the sign first. */
+"%@%%" = "%@%%";
+/* Disk card: percent used, then free space such as "245 GB" */
+"%@%% used · %@ free" = "%@%% used · %@ free";
+/* Fan card value */
+"%@ RPM" = "%@ RPM";
+/* Network card value: a rate such as "812" + "KB", per second */
+"%@ %@/s" = "%@ %@/s";
+
+/* MARK: Stat card VoiceOver labels */
+
+"CPU %@ percent" = "CPU %@ percent";
+"GPU %@ percent" = "GPU %@ percent";
+"GPU usage not available" = "GPU usage not available";
+/* Followed by the spoken memory use, e.g. "8.2 of 16 gigabytes used" */
+"Memory %@" = "Memory %@";
+/* Spoken memory use: used, then total */
+"%@ of %@ gigabytes used" = "%@ of %@ gigabytes used";
+"Memory not available" = "Memory not available";
+/* Battery level, then one of the battery states below */
+"Battery %@ percent, %@" = "Battery %@ percent, %@";
+/* Battery state */
+"Charging" = "Charging";
+/* Battery state */
+"Full" = "Full";
+/* Battery state */
+"Discharging" = "Discharging";
+/* Battery state */
+"AC Power" = "AC Power";
+/* Battery state */
+"Unknown" = "Unknown";
+"Battery not available" = "Battery not available";
+/* Percent full, free space, total size; sizes are spoken, e.g. "194 gigabytes" */
+"Disk %@ percent full, %@ free of %@" = "Disk %@ percent full, %@ free of %@";
+"Disk usage not available" = "Disk usage not available";
+/* Download and upload rates, spoken */
+"Network down %@, up %@" = "Network down %@, up %@";
+"Fan %@ RPM" = "Fan %@ RPM";
+"Fan speed not available" = "Fan speed not available";
+"Temperature %@ degrees Celsius" = "Temperature %@ degrees Celsius";
+"Temperature not available" = "Temperature not available";
+/* Spoken byte unit */
+"bytes" = "bytes";
+/* Spoken byte unit */
+"kilobytes" = "kilobytes";
+/* Spoken byte unit */
+"megabytes" = "megabytes";
+/* Spoken byte unit */
+"gigabytes" = "gigabytes";
+/* Spoken byte unit */
+"terabytes" = "terabytes";
+/* Spoken rate: number, then a spoken unit such as "megabytes" */
+"%@ %@ per second" = "%@ %@ per second";
+
+/* MARK: Settings */
+
+/* Section title */
+"Metrics" = "Metrics";
+/* Column header of the metrics table */
+"Metric" = "Metric";
+/* Column header of the metrics table: shown as a popover card */
+"Card" = "Card";
+/* Column header of the metrics table: shown in the menu bar */
+"Menu bar" = "Menu bar";
+/* VoiceOver label of a metrics table checkbox: metric, then column */
+"%@, %@" = "%@, %@";
+"Shows this metric as a card when you open MacStats from the menu bar." = "Shows this metric as a card when you open MacStats from the menu bar.";
+"Shows this metric in the menu bar." = "Shows this metric in the menu bar.";
+/* Metrics table row */
+"CPU Usage" = "CPU Usage";
+/* Metrics table row */
+"GPU Usage" = "GPU Usage";
+/* Metrics table row */
+"Memory Usage" = "Memory Usage";
+/* Metrics table row */
+"Disk Usage" = "Disk Usage";
+/* Metrics table row */
+"Network Traffic" = "Network Traffic";
+/* Metrics table row */
+"Battery Level" = "Battery Level";
+/* Metrics table row */
+"Fan Speed" = "Fan Speed";
+/* Metrics table row */
+"Temperature" = "Temperature";
+"Metrics ticked under Menu bar replace the MacStats icon. Each one adds width, so two or three is usually the limit before the bar gets crowded." = "Metrics ticked under Menu bar replace the MacStats icon. Each one adds width, so two or three is usually the limit before the bar gets crowded.";
+"With nothing ticked under Menu bar, the menu bar shows the MacStats icon." = "With nothing ticked under Menu bar, the menu bar shows the MacStats icon.";
+/* Section title */
+"Update Interval" = "Update Interval";
+/* Picker label */
+"Refresh Rate" = "Refresh Rate";
+/* VoiceOver label of the refresh rate picker */
+"Refresh rate" = "Refresh rate";
+/* Refresh interval segment, in seconds: "5s" */
+"%@s" = "%@s";
+"Sampling runs continuously to keep the menu bar live, which costs a little CPU and battery. Turn off every menu bar metric to have it pause while the popover is closed." = "Sampling runs continuously to keep the menu bar live, which costs a little CPU and battery. Turn off every menu bar metric to have it pause while the popover is closed.";
+"Sampling only runs while the popover is open." = "Sampling only runs while the popover is open.";
+/* Section title */
+"Startup" = "Startup";
+"Launch at Login" = "Launch at Login";
+/* Section title */
+"About" = "About";
+"Version %@" = "Version %@";
+/* Shown when the app version cannot be read */
+"unknown" = "unknown";
+"Done" = "Done";
+
+/* MARK: Launch at Login status and errors */
+
+"Launch at Login only works when MacStats is installed as an app, not in a development build." = "Launch at Login only works when MacStats is installed as an app, not in a development build.";
+/* The error reported by macOS follows */
+"Couldn't change Launch at Login: %@" = "Couldn't change Launch at Login: %@";
+"Not available in a development build. Install MacStats as an app to use it." = "Not available in a development build. Install MacStats as an app to use it.";
+"MacStats will open when you log in." = "MacStats will open when you log in.";
+"MacStats won't open automatically when you log in." = "MacStats won't open automatically when you log in.";
+"Allow MacStats in System Settings › General › Login Items to finish turning this on." = "Allow MacStats in System Settings › General › Login Items to finish turning this on.";
+"macOS can't find MacStats' login item. Move MacStats to the Applications folder and try again." = "macOS can't find MacStats' login item. Move MacStats to the Applications folder and try again.";
+"Couldn't check whether MacStats opens at login." = "Couldn't check whether MacStats opens at login.";
+
+/* MARK: Audio tab: devices */
+
+/* Section title and device picker label */
+"Output" = "Output";
+/* Section title and device picker label */
+"Input" = "Input";
+"No Audio Devices" = "No Audio Devices";
+"No audio devices found. Connect a device or refresh." = "No audio devices found. Connect a device or refresh.";
+"Refresh" = "Refresh";
+/* VoiceOver label and tooltip of the refresh button */
+"Refresh audio devices" = "Refresh audio devices";
+/* Device picker entry when there is no device of that kind */
+"No device available" = "No device available";
+/* Device picker entry when no device is selected */
+"None" = "None";
+/* Mute checkbox, for the output and for each app */
+"Mute" = "Mute";
+/* VoiceOver label of the output volume slider */
+"Output volume" = "Output volume";
+/* VoiceOver label of the output mute checkbox */
+"Mute output" = "Mute output";
+/* Spoken volume level */
+"%@ percent" = "%@ percent";
+/* Spoken volume when it cannot be read */
+"Unavailable" = "Unavailable";
+/* Spoken volume of a muted slider, e.g. "Muted, 50 percent" */
+"Muted, %@" = "Muted, %@";
+"MacStats could not read the current audio devices." = "MacStats could not read the current audio devices.";
+"macOS could not change this audio setting." = "macOS could not change this audio setting.";
+/* A Core Audio status code follows */
+"macOS could not change this audio setting (error %@)." = "macOS could not change this audio setting (error %@).";
+"No output device is currently available." = "No output device is currently available.";
+"The selected device does not expose this audio control." = "The selected device does not expose this audio control.";
+"The selected device does not allow this audio control to change." = "The selected device does not allow this audio control to change.";
+/* A device name comes first */
+"%@ does not expose an adjustable volume control." = "%@ does not expose an adjustable volume control.";
+"The selected device does not expose an adjustable volume control." = "The selected device does not expose an adjustable volume control.";
+/* A device name comes first */
+"%@ does not expose an adjustable mute control." = "%@ does not expose an adjustable mute control.";
+"The selected device does not expose an adjustable mute control." = "The selected device does not expose an adjustable mute control.";
+/* Name of a device whose name cannot be read */
+"Unknown device" = "Unknown device";
+
+/* MARK: Audio tab: App Mixer */
+
+/* Section title */
+"App Mixer" = "App Mixer";
+"Enable App Mixer" = "Enable App Mixer";
+"Disable App Mixer" = "Disable App Mixer";
+/* Enable button while macOS asks for permission */
+"Waiting for Permission…" = "Waiting for Permission…";
+/* Enable button while the mixer starts */
+"Starting…" = "Starting…";
+"No app is playing audio yet. Apps appear here when they start playing." = "No app is playing audio yet. Apps appear here when they start playing.";
+/* Privacy explanation shown before the mixer is enabled */
+"To set each app's volume, MacStats captures the sound apps send to your output and plays it back at the levels you choose. Audio is processed in memory on this Mac only; nothing is recorded, saved or sent anywhere. Browser tabs are controlled as one browser app." = "To set each app's volume, MacStats captures the sound apps send to your output and plays it back at the levels you choose. Audio is processed in memory on this Mac only; nothing is recorded, saved or sent anywhere. Browser tabs are controlled as one browser app.";
+"Audio capture is turned off for MacStats. Allow it in Privacy & Security under Screen & System Audio Recording, then enable the mixer again." = "Audio capture is turned off for MacStats. Allow it in Privacy & Security under Screen & System Audio Recording, then enable the mixer again.";
+"Open System Settings" = "Open System Settings";
+"macOS may ask for permission to record system audio. If this window closes, reopen MacStats to see the mixer." = "macOS may ask for permission to record system audio. If this window closes, reopen MacStats to see the mixer.";
+/* VoiceOver label of an app volume slider */
+"%@ volume" = "%@ volume";
+/* VoiceOver label of an app mute checkbox */
+"Mute %@" = "Mute %@";
+/* VoiceOver label of an app status icon: app name, then one of the statuses below */
+"%@ %@" = "%@ %@";
+/* App status: muted in the mixer */
+"Muted" = "Muted";
+/* App status: volume slider at zero */
+"Silent" = "Silent";
+/* App status: being mixed normally */
+"Mixing" = "Mixing";
+/* Name of an app process macOS cannot name; the process ID follows */
+"Process %@" = "Process %@";
+"Application mixing requires macOS 14.2 or later." = "Application mixing requires macOS 14.2 or later.";
+"MacStats does not have permission to capture application audio." = "MacStats does not have permission to capture application audio.";
+"App Mixer stopped because audio capture permission was turned off." = "App Mixer stopped because audio capture permission was turned off.";
+"App Mixer stopped because the output device changed. Enable it again to mix on the new device." = "App Mixer stopped because the output device changed. Enable it again to mix on the new device.";
+"App Mixer stopped because the macOS audio service restarted." = "App Mixer stopped because the macOS audio service restarted.";
+"MacStats could not start the application mixer." = "MacStats could not start the application mixer.";
+"MacStats could not create an application audio tap." = "MacStats could not create an application audio tap.";
+"MacStats received an unexpected application audio format." = "MacStats received an unexpected application audio format.";
+"MacStats could not read the application audio format." = "MacStats could not read the application audio format.";
+"MacStats could not create the application mixer output." = "MacStats could not create the application mixer output.";
+"MacStats could not prepare the application mixer stream." = "MacStats could not prepare the application mixer stream.";
+"MacStats could not start the application mixer stream." = "MacStats could not start the application mixer stream.";
+"MacStats could not identify an audio device." = "MacStats could not identify an audio device.";
+"The current output device has no output streams." = "The current output device has no output streams.";
+"The current output device has no output channels." = "The current output device has no output channels.";
+"The current output device uses an audio format the mixer does not support." = "The current output device uses an audio format the mixer does not support.";

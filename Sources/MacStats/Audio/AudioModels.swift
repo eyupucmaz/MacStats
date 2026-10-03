@@ -59,12 +59,14 @@ struct AudioDeviceState: Equatable, Sendable {
         }
     }
 
-    static let empty = AudioDeviceState(
-        devices: [],
-        defaultInputID: nil,
-        defaultOutputID: nil,
-        outputVolume: nil,
-        outputMuted: nil,
-        outputControlMessage: "No output device is currently available."
-    )
+    static var empty: AudioDeviceState {
+        AudioDeviceState(
+            devices: [],
+            defaultInputID: nil,
+            defaultOutputID: nil,
+            outputVolume: nil,
+            outputMuted: nil,
+            outputControlMessage: AudioControlError.deviceUnavailable.message
+        )
+    }
 }

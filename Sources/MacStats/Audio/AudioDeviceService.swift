@@ -6,8 +6,8 @@ final class AudioDeviceService: ObservableObject {
     @Published private(set) var state: AudioDeviceState
     @Published private(set) var errorMessage: String?
 
-    private static let readFailureMessage = "MacStats could not read the current audio devices."
-    private static let writeFailureMessage = "macOS could not change this audio setting."
+    private static var readFailureMessage: String { L10n.string("MacStats could not read the current audio devices.") }
+    private static var writeFailureMessage: String { L10n.string("macOS could not change this audio setting.") }
 
     private let hardware: AudioHardwareClient
 
