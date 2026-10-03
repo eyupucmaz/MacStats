@@ -22,7 +22,7 @@ struct MemoryDetailPage: View {
             MemoryTopProcesses(report: model.processes, locale: locale)
             about
         }
-        .onAppear { model.start(history: stats.history) }
+        .onAppear { model.start(engine: stats) }
         .onDisappear { model.stop() }
     }
 
@@ -81,16 +81,20 @@ final class MemoryDetailModel: ObservableObject {
 
     /// Main thread. Each reading's pressure level goes into history so the band
     /// under the pressure chart keeps what was seen on earlier visits too.
-    func start(history: MetricHistory) {
+    /// Readings reach the page with the engine's ticks (`StatsEngine.coalesce`).
+    func start(engine: StatsEngine) {
+        let history = engine.history
         history.register(MemoryDetailSeries.pressureLevel, unit: .count, interval: MemoryDetailSampler.defaultInterval)
         sampler.start { [weak self, weak history] detail in
-            self?.detail = detail
-            if let level = detail.level {
-                history?.record(level.severity, for: MemoryDetailSeries.pressureLevel, unit: .count)
+            engine.coalesce {
+                self?.detail = detail
+                if let level = detail.level {
+                    history?.record(level.severity, for: MemoryDetailSeries.pressureLevel, unit: .count)
+                }
             }
         }
         processSampler.start { [weak self] report in
-            self?.processes = report
+            engine.coalesce { self?.processes = report }
         }
     }
 

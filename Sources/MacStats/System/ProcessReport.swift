@@ -71,21 +71,34 @@ struct ProcessReport {
     /// The `count` heaviest rows for `metric`. Ties go to the name, then the PID, so rows
     /// with equal values do not swap places between refreshes. CPU and disk lists leave
     /// out rows that have no rate yet.
+    ///
+    /// Pages call this from `body` on every tick, so it selects instead of sorting: a full
+    /// sort of ~1,000 rows, most of them tied at zero and broken by name, was the largest
+    /// cost of the Disk page (#35). O(rows × count); keep `count` small.
     func top(_ metric: ProcessMetric, count: Int = 5) -> [ProcessUsage] {
         guard count > 0 else { return [] }
-        let candidates = metric == .memory ? processes : processes.filter(\.isMeasured)
-        let sorted = candidates.sorted { lhs, rhs in
-            let left = lhs.value(of: metric), right = rhs.value(of: metric)
-            if left != right { return left > right }
-            switch lhs.name.compare(rhs.name, options: [.caseInsensitive, .numeric]) {
-            case .orderedAscending: return true
-            case .orderedDescending: return false
-            case .orderedSame:
-                if lhs.name != rhs.name { return lhs.name < rhs.name }
-                return lhs.pid < rhs.pid
-            }
+        var kept: [ProcessUsage] = []
+        kept.reserveCapacity(count + 1)
+        for usage in processes where metric == .memory || usage.isMeasured {
+            if kept.count == count, let last = kept.last, !Self.ranks(usage, before: last, by: metric) { continue }
+            let index = kept.firstIndex { Self.ranks(usage, before: $0, by: metric) } ?? kept.endIndex
+            kept.insert(usage, at: index)
+            if kept.count > count { kept.removeLast() }
         }
-        return Array(sorted.prefix(count))
+        return kept
+    }
+
+    /// The order of `top`: heavier first, then by name, then by PID.
+    private static func ranks(_ lhs: ProcessUsage, before rhs: ProcessUsage, by metric: ProcessMetric) -> Bool {
+        let left = lhs.value(of: metric), right = rhs.value(of: metric)
+        if left != right { return left > right }
+        switch lhs.name.compare(rhs.name, options: [.caseInsensitive, .numeric]) {
+        case .orderedAscending: return true
+        case .orderedDescending: return false
+        case .orderedSame:
+            if lhs.name != rhs.name { return lhs.name < rhs.name }
+            return lhs.pid < rhs.pid
+        }
     }
 
     /// Pure: rates over `elapsed` seconds. A process counts towards CPU and disk rates only

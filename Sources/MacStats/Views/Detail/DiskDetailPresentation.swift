@@ -162,9 +162,11 @@ enum DiskDetailPresentation {
     /// Rows with disk traffic, heaviest first. Idle processes are left out so the
     /// list does not fill up with "0 B/s".
     static func topProcesses(_ report: ProcessReport, count: Int = 5) -> [ProcessUsage] {
-        Array(report.top(.diskIO, count: report.processes.count)
-            .prefix { $0.diskBytesPerSecond > 0 }
-            .prefix(count))
+        // Only rows doing I/O compete, so the idle majority never reaches the name tie-break.
+        ProcessReport(processes: report.processes.filter { $0.isMeasured && $0.diskBytesPerSecond > 0 },
+                      skippedCount: report.skippedCount,
+                      coreCount: report.coreCount)
+            .top(.diskIO, count: count)
     }
 
     /// e.g. "Read 1.2 MB/s · Write 340 KB/s".

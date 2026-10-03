@@ -20,7 +20,7 @@ struct CPUDetailPage: View {
             CPUTopProcessesSection(report: model.processes)
             CPUAboutSection(info: model.info, thermalState: model.reading?.thermalState)
         }
-        .onAppear { model.start() }
+        .onAppear { model.start(engine: stats) }
         .onDisappear { model.stop() }
     }
 }
@@ -38,18 +38,22 @@ final class CPUDetailModel: ObservableObject {
 
     /// The bars follow the refresh rate the user picked, but never slower than every
     /// 2 s: a page someone is looking at should move.
-    func start() {
+    /// Readings reach the page with the engine's ticks (`StatsEngine.coalesce`).
+    func start(engine: StatsEngine) {
         let interval = min(AppSettings.shared.updateInterval, 2)
         detailSampler.start(interval: interval) { [weak self] reading in
-            guard let self else { return }
-            var next = reading
-            // A failed per-core read keeps the last bars rather than blanking them.
-            if next.cores == nil { next.cores = self.reading?.cores }
-            if next != self.reading { self.reading = next }
+            engine.coalesce { self?.receive(reading) }
         }
         processSampler.start(interval: 2) { [weak self] report in
-            self?.processes = report
+            engine.coalesce { self?.processes = report }
         }
+    }
+
+    private func receive(_ reading: CPUDetailReading) {
+        var next = reading
+        // A failed per-core read keeps the last bars rather than blanking them.
+        if next.cores == nil { next.cores = self.reading?.cores }
+        if next != self.reading { self.reading = next }
     }
 
     func stop() {
@@ -219,25 +223,21 @@ private struct CPUCoreBar: View {
     let load: CPUSample?
 
     var body: some View {
-        GeometryReader { geometry in
-            let height = geometry.size.height
-            VStack(spacing: 0) {
-                Spacer(minLength: 0)
-                if let load {
-                    Rectangle()
-                        .fill(ChartPalette.color(1))
-                        .frame(height: height * min(load.system, 100) / 100)
-                    Rectangle()
-                        .fill(ChartPalette.color(0))
-                        .frame(height: height * max(min(load.total, 100) - load.system, 0) / 100)
-                }
-            }
-            .frame(width: geometry.size.width, height: height)
+        // Core Animation eases the fills; a SwiftUI animation here redrew the
+        // whole page on every frame (#35).
+        AnimatedBar(direction: .up, segments: segments, cornerRadius: 2)
             .background(.quaternary)
             .clipShape(RoundedRectangle(cornerRadius: 2))
-        }
-        .frame(maxWidth: 18)
-        .animation(.easeOut(duration: 0.2), value: load?.total)
+            .frame(maxWidth: 18)
+    }
+
+    /// User at the bottom, system above it.
+    private var segments: [AnimatedBar.Segment] {
+        guard let load else { return [] }
+        let system = min(load.system, 100)
+        let user = max(min(load.total, 100) - system, 0)
+        return [AnimatedBar.Segment(fraction: user / 100, color: ChartPalette.nsColor(0)),
+                AnimatedBar.Segment(fraction: system / 100, color: ChartPalette.nsColor(1))]
     }
 }
 

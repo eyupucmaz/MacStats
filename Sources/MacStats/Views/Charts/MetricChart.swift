@@ -61,8 +61,15 @@ private struct MetricChartPlot: View {
     var body: some View {
         let descriptor = MetricChartDescriptor(title: title, model: model, locale: locale)
         Chart {
+            // Lines and fills are drawn by `MetricChartRuns` in the overlay; only
+            // the dots are marks.
             ForEach(model.segments) { segment in
-                SegmentMarks(segment: segment, style: model.style)
+                if segment.points.count == 1, let point = segment.points.first {
+                    // A run of one sample has no line to show.
+                    PointMark(x: .value("Time", point.date), y: .value("Value", point.high))
+                        .symbolSize(12)
+                        .foregroundStyle(ChartPalette.color(segment.seriesIndex))
+                }
             }
             ForEach(model.series) { series in
                 if let latest = series.latest {
@@ -98,7 +105,10 @@ private struct MetricChartPlot: View {
         }
         .chartLegend(.hidden)
         .chartOverlay { proxy in
-            ChartHoverLayer(proxy: proxy, model: model, locale: locale)
+            ZStack {
+                MetricChartRuns(proxy: proxy, model: model)
+                ChartHoverLayer(proxy: proxy, model: model, locale: locale)
+            }
         }
         // One element with an audio graph instead of one element per mark,
         // which would be hundreds of stops for VoiceOver.
@@ -109,35 +119,68 @@ private struct MetricChartPlot: View {
     }
 }
 
-/// The marks of one unbroken run: fill (area styles), line, and a dot when the
-/// run is a single sample a line could not show.
-private struct SegmentMarks: ChartContent {
-    let segment: MetricChartModel.Segment
-    let style: MetricChartStyle
+/// Every run's fill (area styles) and line, drawn as one path per run on a single
+/// canvas. As Swift Charts marks — one `LineMark` and one `AreaMark` per sample —
+/// they were most of a page's CPU time, since Charts lays every mark out again on
+/// each tick (#35). Positions come from the chart's own scales, so the paths line
+/// up with the axes, the dots and the hover layer exactly as the marks did.
+private struct MetricChartRuns: View {
+    let proxy: ChartProxy
+    let model: MetricChartModel
 
-    var body: some ChartContent {
-        let color = ChartPalette.color(segment.seriesIndex)
-        if style != .line {
-            ForEach(segment.points, id: \.date) { point in
-                AreaMark(x: .value("Time", point.date),
-                         yStart: .value("Low", point.low),
-                         yEnd: .value("High", point.high),
-                         series: .value("Segment", segment.id))
-                    .foregroundStyle(color.opacity(style == .stackedArea ? 0.32 : 0.14))
+    var body: some View {
+        GeometryReader { geometry in
+            let runs = ChartPlotMapping(proxy: proxy, plot: geometry[proxy.plotAreaFrame], model: model)
+                .map { mapping in model.segments.map { Run(segment: $0, mapping: mapping, style: model.style) } } ?? []
+            Canvas { context, _ in
+                for run in runs {
+                    let color = ChartPalette.color(run.seriesIndex)
+                    if let area = run.area {
+                        context.fill(area, with: .color(color.opacity(model.style == .stackedArea ? 0.32 : 0.14)))
+                    }
+                    context.stroke(run.line, with: .color(color), style: ChartPalette.stroke(run.seriesIndex))
+                }
             }
         }
-        ForEach(segment.points, id: \.date) { point in
-            LineMark(x: .value("Time", point.date),
-                     y: .value("Value", point.high),
-                     series: .value("Segment", segment.id))
-                .foregroundStyle(color)
-                .lineStyle(ChartPalette.stroke(segment.seriesIndex))
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    private struct Run {
+        let seriesIndex: Int
+        let line: Path
+        /// Between `low` and `high`; nil for the line style.
+        let area: Path?
+
+        init(segment: MetricChartModel.Segment, mapping: ChartPlotMapping, style: MetricChartStyle) {
+            seriesIndex = segment.seriesIndex
+            let highs = segment.points.map { mapping.point(date: $0.date, value: $0.high) }
+            var line = Path()
+            line.addLines(highs)
+            self.line = line
+            if style == .line || highs.count < 2 {
+                area = nil
+            } else {
+                var area = Path()
+                area.addLines(highs + segment.points.reversed().map { mapping.point(date: $0.date, value: $0.low) })
+                area.closeSubpath()
+                self.area = area
+            }
         }
-        if segment.points.count == 1, let point = segment.points.first {
-            PointMark(x: .value("Time", point.date), y: .value("Value", point.high))
-                .symbolSize(12)
-                .foregroundStyle(color)
-        }
+    }
+}
+
+extension ChartPlotMapping {
+    /// From the chart's scales; nil until the chart has laid out its plot area.
+    init?(proxy: ChartProxy, plot: CGRect, model: MetricChartModel) {
+        let dates = model.timeScale.domain
+        let values = model.valueScale.domain
+        guard let startX = proxy.position(forX: dates.lowerBound), let endX = proxy.position(forX: dates.upperBound),
+              let lowY = proxy.position(forY: values.lowerBound), let highY = proxy.position(forY: values.upperBound)
+        else { return nil }
+        self.init(dates: dates, values: values,
+                  startX: plot.minX + startX, endX: plot.minX + endX,
+                  lowY: plot.minY + lowY, highY: plot.minY + highY)
     }
 }
 

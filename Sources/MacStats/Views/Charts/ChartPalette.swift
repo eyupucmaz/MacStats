@@ -59,12 +59,17 @@ enum ChartPalette {
     static let lineWidth: CGFloat = 1.6
 
     static func color(_ index: Int) -> Color {
+        Color(nsColor: nsColor(index))
+    }
+
+    /// `color(_:)` for AppKit and Core Animation; resolves per appearance.
+    static func nsColor(_ index: Int) -> NSColor {
         let index = index % light.count
         let light = light[index].nsColor
         let dark = dark[index].nsColor
-        return Color(nsColor: NSColor(name: nil) { appearance in
+        return NSColor(name: nil) { appearance in
             appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? dark : light
-        })
+        }
     }
 
     static func dash(_ index: Int) -> [CGFloat] {
