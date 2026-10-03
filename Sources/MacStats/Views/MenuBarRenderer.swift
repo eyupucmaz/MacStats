@@ -29,7 +29,7 @@ enum MenuBarMetric: String, CaseIterable, Identifiable {
         case .cpu: return "CPU Usage"
         case .gpu: return "GPU"
         case .ram: return "Memory"
-        case .disk: return "Disk I/O"
+        case .disk: return "Disk Usage"
         case .network: return "Network"
         case .battery: return "Battery"
         case .fan: return "Fan Speed"
@@ -45,8 +45,8 @@ struct MenuBarSnapshot {
     var gpuUsage: Double = 0
     var memoryUsed: UInt64 = 0
     var memoryTotal: UInt64 = 0
-    var diskReadBytes: Double = 0
-    var diskWriteBytes: Double = 0
+    var diskUsedBytes: UInt64 = 0
+    var diskTotalBytes: UInt64 = 0
     var networkDownBytes: Double = 0
     var networkUpBytes: Double = 0
     var batteryLevel: Int = 0
@@ -58,7 +58,7 @@ struct MenuBarSnapshot {
 
     init(cpuUsage: Double = 0, gpuUsage: Double = 0,
          memoryUsed: UInt64 = 0, memoryTotal: UInt64 = 0,
-         diskReadBytes: Double = 0, diskWriteBytes: Double = 0,
+         diskUsedBytes: UInt64 = 0, diskTotalBytes: UInt64 = 0,
          networkDownBytes: Double = 0, networkUpBytes: Double = 0,
          batteryLevel: Int = 0, batteryState: String = "Unknown",
          fanRPM: Int = 0, isFanAvailable: Bool = false,
@@ -67,8 +67,8 @@ struct MenuBarSnapshot {
         self.gpuUsage = gpuUsage
         self.memoryUsed = memoryUsed
         self.memoryTotal = memoryTotal
-        self.diskReadBytes = diskReadBytes
-        self.diskWriteBytes = diskWriteBytes
+        self.diskUsedBytes = diskUsedBytes
+        self.diskTotalBytes = diskTotalBytes
         self.networkDownBytes = networkDownBytes
         self.networkUpBytes = networkUpBytes
         self.batteryLevel = batteryLevel
@@ -85,8 +85,8 @@ struct MenuBarSnapshot {
                   gpuUsage: engine.gpuUsage,
                   memoryUsed: engine.memoryUsed,
                   memoryTotal: engine.memoryTotal,
-                  diskReadBytes: engine.diskReadBytes,
-                  diskWriteBytes: engine.diskWriteBytes,
+                  diskUsedBytes: engine.diskUsedBytes,
+                  diskTotalBytes: engine.diskTotalBytes,
                   networkDownBytes: engine.networkDownBytes,
                   networkUpBytes: engine.networkUpBytes,
                   batteryLevel: engine.batteryLevel,
@@ -151,7 +151,8 @@ enum MenuBarRenderer {
             guard s.memoryTotal > 0 else { return unavailable }
             return String(format: "%.1fG", Double(s.memoryUsed) / 1_073_741_824)
         case .disk:
-            return "↓\(ByteRate.compact(s.diskReadBytes)) ↑\(ByteRate.compact(s.diskWriteBytes))"
+            guard s.diskTotalBytes > 0 else { return unavailable }
+            return String(format: "%.0f%%", Double(s.diskUsedBytes) / Double(s.diskTotalBytes) * 100)
         case .network:
             return "↓\(ByteRate.compact(s.networkDownBytes)) ↑\(ByteRate.compact(s.networkUpBytes))"
         case .battery:

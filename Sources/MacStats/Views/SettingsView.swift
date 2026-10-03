@@ -34,7 +34,7 @@ struct SettingsView: View {
                     Toggle("Show GPU", isOn: $settings.showGPU)
                     Toggle("Show Memory", isOn: $settings.showMemory)
                     Toggle("Show Battery", isOn: $settings.showBattery)
-                    Toggle("Show Disk I/O", isOn: $settings.showDisk)
+                    Toggle("Show Disk Usage", isOn: $settings.showDisk)
                     Toggle("Show Network", isOn: $settings.showNetwork)
                     Toggle("Show Fan Speed", isOn: $settings.showFan)
                     Toggle("Show Temperature", isOn: $settings.showTemperature)

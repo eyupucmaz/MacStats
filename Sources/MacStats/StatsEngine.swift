@@ -11,8 +11,8 @@ final class StatsEngine: ObservableObject {
     @Published var memoryTotal: UInt64 = 0
     @Published var memoryPressure: Double = 0.0
     @Published var gpuUsage: Double = 0.0
-    @Published var diskReadBytes: Double = 0.0
-    @Published var diskWriteBytes: Double = 0.0
+    @Published var diskUsedBytes: UInt64 = 0
+    @Published var diskTotalBytes: UInt64 = 0
     @Published var networkUpBytes: Double = 0.0
     @Published var networkDownBytes: Double = 0.0
     @Published var batteryLevel: Int = 0
@@ -71,15 +71,12 @@ final class StatsEngine: ObservableObject {
         queue.async { [weak self] in
             guard let self else { return }
             self.cpu.reset()
-            self.disk.reset()
             self.network.reset()
             DispatchQueue.main.async {
                 self.cpuUsage = 0
                 self.cpuUserUsage = 0
                 self.cpuSystemUsage = 0
                 self.gpuUsage = 0
-                self.diskReadBytes = 0
-                self.diskWriteBytes = 0
                 self.networkUpBytes = 0
                 self.networkDownBytes = 0
             }
@@ -111,7 +108,6 @@ final class StatsEngine: ObservableObject {
         queue.async { [weak self] in
             guard let self else { return }
             _ = self.cpu.sample()
-            _ = self.disk.sample()
             _ = self.network.sample()
         }
 
@@ -153,8 +149,8 @@ final class StatsEngine: ObservableObject {
             self.memoryPressure = memorySample.pressure
             self.gpuUsage = gpuSample ?? 0
             if let diskSample {
-                self.diskReadBytes = diskSample.readBytesPerSecond
-                self.diskWriteBytes = diskSample.writeBytesPerSecond
+                self.diskUsedBytes = diskSample.usedBytes
+                self.diskTotalBytes = diskSample.totalBytes
             }
             if let networkSample {
                 self.networkDownBytes = networkSample.downBytesPerSecond

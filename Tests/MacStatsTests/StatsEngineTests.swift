@@ -98,14 +98,20 @@ final class StatsEngineTests: XCTestCase {
     func testThroughputCountersAreNonNegativeAndFinite() {
         sampleOnce()
         for (name, value) in [
-            ("diskReadBytes", engine.diskReadBytes),
-            ("diskWriteBytes", engine.diskWriteBytes),
             ("networkUpBytes", engine.networkUpBytes),
             ("networkDownBytes", engine.networkDownBytes),
         ] {
             XCTAssertTrue(value.isFinite, "\(name) must be finite, got \(value)")
             XCTAssertGreaterThanOrEqual(value, 0, "\(name) must not be negative")
         }
+    }
+
+    // MARK: - Disk capacity
+
+    func testDiskUsageFitsWithinTotal() {
+        sampleOnce()
+        XCTAssertGreaterThan(engine.diskTotalBytes, 0, "startup volume capacity must be readable")
+        XCTAssertLessThanOrEqual(engine.diskUsedBytes, engine.diskTotalBytes)
     }
 
     // MARK: - Hardware availability

@@ -5,7 +5,7 @@
 MacStats is a lightweight, read-only macOS menu bar app for monitoring local
 system metrics. The v0.1.0 public preview requires macOS 13 (Ventura) or later.
 
-It reports CPU, memory, GPU, disk I/O, network, and battery metrics. When the
+It reports CPU, memory, GPU, disk usage, network, and battery metrics. When the
 hardware exposes them, it also reports fan RPM and temperature. This preview is
 monitoring-only: it does not include fan control.
 
