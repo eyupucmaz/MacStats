@@ -143,3 +143,77 @@ enum ByteRate {
         return L10n.string("\(scaled.number) \(scaled.unit.spoken) per second")
     }
 }
+
+/// Any `MetricUnit` reading, for the detail charts (#23): tooltip, legend and
+/// stats values, axis ticks, and the spoken form VoiceOver reads. Built on the
+/// formatters above so a chart reads the same as the card it came from.
+enum MetricValueFormat {
+    /// Tooltip / legend / stats form, e.g. "23.4%", "1.2 MB/s", "2502 RPM", "53.4°C".
+    static func short(_ value: Double, unit: MetricUnit, locale: Locale = .autoupdatingCurrent) -> String {
+        switch unit {
+        case .percent:
+            return MetricFormat.percent(value, digits: 1, locale: locale)
+        case .bytes:
+            let scaled = MetricFormat.decimalBytes(value, locale: locale)
+            return "\(scaled.number) \(scaled.unit.symbol)"
+        case .bytesPerSecond:
+            return ByteRate.short(value, locale: locale)
+        case .rpm:
+            return L10n.string("\(MetricFormat.decimal(value, digits: 0, locale: locale)) RPM")
+        case .celsius:
+            return MetricFormat.decimal(value, digits: 1, locale: locale) + "°C"
+        case .watts:
+            return MetricFormat.decimal(value, digits: value < 9.95 ? 1 : 0, locale: locale) + " W"
+        case .count:
+            return MetricFormat.decimal(value, digits: value == value.rounded() ? 0 : 1, locale: locale)
+        }
+    }
+
+    /// Axis tick label: as `short`, but with only as many decimals as the tick
+    /// `step` needs ("50%", "55°C", "0.5 W"), so labels stay narrow and distinct.
+    static func axis(_ value: Double, unit: MetricUnit, step: Double, locale: Locale = .autoupdatingCurrent) -> String {
+        let digits = step >= 1 ? 0 : step >= 0.1 ? 1 : 2
+        switch unit {
+        case .percent:
+            return MetricFormat.percent(value, digits: 0, locale: locale)
+        case .bytes, .bytesPerSecond, .rpm:
+            return short(value, unit: unit, locale: locale)
+        case .celsius:
+            return MetricFormat.decimal(value, digits: digits, locale: locale) + "°C"
+        case .watts:
+            return MetricFormat.decimal(value, digits: digits, locale: locale) + " W"
+        case .count:
+            return MetricFormat.decimal(value, digits: digits, locale: locale)
+        }
+    }
+
+    /// Spelled-out form for VoiceOver and the chart's audio graph.
+    static func spoken(_ value: Double, unit: MetricUnit, locale: Locale = .autoupdatingCurrent) -> String {
+        switch unit {
+        case .percent:
+            return L10n.string("\(MetricFormat.decimal(value, digits: 1, locale: locale)) percent")
+        case .bytes:
+            let scaled = MetricFormat.decimalBytes(value, locale: locale)
+            return "\(scaled.number) \(scaled.unit.spoken)"
+        case .bytesPerSecond:
+            return ByteRate.spoken(value, locale: locale)
+        case .rpm:
+            return L10n.string("\(MetricFormat.decimal(value, digits: 0, locale: locale)) revolutions per minute")
+        case .celsius:
+            return L10n.string("\(MetricFormat.decimal(value, digits: 1, locale: locale)) degrees Celsius")
+        case .watts:
+            return L10n.string("\(MetricFormat.decimal(value, digits: value < 9.95 ? 1 : 0, locale: locale)) watts")
+        case .count:
+            return short(value, unit: .count, locale: locale)
+        }
+    }
+
+    /// Clock time of a sample in the user's 12/24-hour style, e.g. "14:03:27";
+    /// `seconds: false` gives "14:03".
+    static func time(_ date: Date, seconds: Bool = true, locale: Locale = .autoupdatingCurrent,
+                     timeZone: TimeZone = .autoupdatingCurrent) -> String {
+        var style = Date.FormatStyle(locale: locale, timeZone: timeZone).hour().minute()
+        if seconds { style = style.second() }
+        return date.formatted(style)
+    }
+}
