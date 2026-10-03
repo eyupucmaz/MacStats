@@ -81,40 +81,43 @@ struct StatsView: View {
     // MARK: - Cards
 
     private var cards: [StatCardModel] {
+        let s = stats.snapshot
         var result: [StatCardModel] = []
 
         if settings.showCPU {
             result.append(StatCardModel(id: "cpu", title: "CPU",
-                                        value: String(format: "%.1f%%", stats.cpuUsage),
+                                        value: String(format: "%.1f%%", s.cpuUsage),
                                         icon: "cpu", color: .blue,
-                                        accessibility: String(format: "CPU %.1f percent", stats.cpuUsage)))
+                                        accessibility: String(format: "CPU %.1f percent", s.cpuUsage)))
         }
         if settings.showGPU {
             result.append(StatCardModel(id: "gpu", title: "GPU",
-                                        value: String(format: "%.1f%%", stats.gpuUsage),
+                                        value: s.isGPUAvailable ? String(format: "%.1f%%", s.gpuUsage) : Self.unavailable,
                                         icon: "display", color: .green,
-                                        accessibility: String(format: "GPU %.1f percent", stats.gpuUsage)))
+                                        accessibility: s.isGPUAvailable
+                                            ? String(format: "GPU %.1f percent", s.gpuUsage)
+                                            : "GPU usage not available"))
         }
         if settings.showMemory {
-            let value = formatMemory(stats.memoryUsed, stats.memoryTotal)
+            let value = formatMemory(s.memoryUsed, s.memoryTotal)
             result.append(StatCardModel(id: "ram", title: "RAM", value: value,
                                         icon: "memorychip", color: .orange,
                                         accessibility: "Memory \(value)"))
         }
         if settings.showBattery {
-            let available = stats.batteryLevel > 0 && stats.batteryState != "Unknown"
-            let value = available ? "\(stats.batteryLevel)%" : Self.unavailable
+            let available = s.isBatteryAvailable
+            let value = available ? "\(s.batteryLevel)%" : Self.unavailable
             result.append(StatCardModel(id: "battery", title: "Battery", value: value,
-                                        icon: batteryIcon(stats.batteryState, stats.batteryLevel),
+                                        icon: batteryIcon(s.batteryState, s.batteryLevel),
                                         color: .yellow,
                                         accessibility: available
-                                            ? "Battery \(stats.batteryLevel) percent, \(stats.batteryState)"
+                                            ? "Battery \(s.batteryLevel) percent, \(s.batteryState)"
                                             : "Battery not available"))
         }
         if settings.showDisk {
-            let available = stats.diskTotalBytes > 0
-            let percent = available ? Double(stats.diskUsedBytes) / Double(stats.diskTotalBytes) * 100 : 0
-            let free = stats.diskTotalBytes - min(stats.diskUsedBytes, stats.diskTotalBytes)
+            let available = s.diskTotalBytes > 0
+            let percent = available ? Double(s.diskUsedBytes) / Double(s.diskTotalBytes) * 100 : 0
+            let free = s.diskTotalBytes - min(s.diskUsedBytes, s.diskTotalBytes)
             let value = available
                 ? String(format: "%.0f%% used · %@ free", percent, DiskSize.short(free))
                 : Self.unavailable
@@ -122,32 +125,32 @@ struct StatsView: View {
                                         icon: "internaldrive", color: .purple,
                                         accessibility: available
                                             ? String(format: "Disk %.0f percent full, ", percent)
-                                                + "\(DiskSize.spoken(free)) free of \(DiskSize.spoken(stats.diskTotalBytes))"
+                                                + "\(DiskSize.spoken(free)) free of \(DiskSize.spoken(s.diskTotalBytes))"
                                             : "Disk usage not available"))
         }
         if settings.showNetwork {
-            let value = "↓\(ByteRate.short(stats.networkDownBytes))  ↑\(ByteRate.short(stats.networkUpBytes))"
+            let value = "↓\(ByteRate.short(s.networkDownBytes))  ↑\(ByteRate.short(s.networkUpBytes))"
             result.append(StatCardModel(id: "network", title: "Network", value: value,
                                         icon: "network", color: .teal,
-                                        accessibility: "Network down \(ByteRate.spoken(stats.networkDownBytes)), "
-                                            + "up \(ByteRate.spoken(stats.networkUpBytes))"))
+                                        accessibility: "Network down \(ByteRate.spoken(s.networkDownBytes)), "
+                                            + "up \(ByteRate.spoken(s.networkUpBytes))"))
         }
         if settings.showFan {
-            let value = stats.isFanAvailable ? "\(stats.fanRPM) RPM" : "N/A"
+            let value = s.isFanAvailable ? "\(s.fanRPM) RPM" : "N/A"
             result.append(StatCardModel(id: "fan", title: "Fan", value: value,
                                         icon: "fanblades", color: .red,
-                                        accessibility: stats.isFanAvailable
-                                            ? "Fan \(stats.fanRPM) RPM"
+                                        accessibility: s.isFanAvailable
+                                            ? "Fan \(s.fanRPM) RPM"
                                             : "Fan speed not available"))
         }
         if settings.showTemperature {
-            let value = stats.isTemperatureAvailable
-                ? String(format: "%.1f°C", stats.temperature)
+            let value = s.isTemperatureAvailable
+                ? String(format: "%.1f°C", s.temperature)
                 : "N/A"
             result.append(StatCardModel(id: "temp", title: "Temp", value: value,
                                         icon: "thermometer", color: .pink,
-                                        accessibility: stats.isTemperatureAvailable
-                                            ? String(format: "Temperature %.1f degrees Celsius", stats.temperature)
+                                        accessibility: s.isTemperatureAvailable
+                                            ? String(format: "Temperature %.1f degrees Celsius", s.temperature)
                                             : "Temperature not available"))
         }
         return result

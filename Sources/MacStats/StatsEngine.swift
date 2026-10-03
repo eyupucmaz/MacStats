@@ -1,57 +1,146 @@
 import Combine
 import Foundation
 
-final class StatsEngine: ObservableObject {
-    static let shared = StatsEngine()
+/// Everything the UI draws, published as one value so a tick costs a single change
+/// notification instead of one per field. Unavailable sensors carry a flag rather
+/// than a fake zero.
+struct StatsSnapshot: Equatable {
+    var cpuUsage: Double = 0
+    var gpuUsage: Double = 0
+    var isGPUAvailable: Bool = false
+    var memoryUsed: UInt64 = 0
+    var memoryTotal: UInt64 = 0
+    var diskUsedBytes: UInt64 = 0
+    var diskTotalBytes: UInt64 = 0
+    var networkDownBytes: Double = 0
+    var networkUpBytes: Double = 0
+    var batteryLevel: Int = 0
+    var batteryState: String = "Unknown"
+    var fanRPM: Int = 0
+    var isFanAvailable: Bool = false
+    var temperature: Double = 0
+    var isTemperatureAvailable: Bool = false
 
-    @Published var cpuUsage: Double = 0.0
-    @Published var cpuUserUsage: Double = 0.0
-    @Published var cpuSystemUsage: Double = 0.0
-    @Published var memoryUsed: UInt64 = 0
-    @Published var memoryTotal: UInt64 = 0
-    @Published var memoryPressure: Double = 0.0
-    @Published var gpuUsage: Double = 0.0
-    @Published var diskUsedBytes: UInt64 = 0
-    @Published var diskTotalBytes: UInt64 = 0
-    @Published var networkUpBytes: Double = 0.0
-    @Published var networkDownBytes: Double = 0.0
-    @Published var batteryLevel: Int = 0
-    @Published var batteryState: String = "Unknown"
-    @Published var batteryIsCharging: Bool = false
-    @Published var batteryHealth: Int = 0
-    @Published var batteryCycleCount: Int = 0
-    @Published var fanRPM: Int = 0
-    @Published var isFanAvailable: Bool = false
-    @Published var temperature: Double = 0.0
-    @Published var isTemperatureAvailable: Bool = false
+    /// Desktops report level 0 / "AC Power"; a failed read reports "Unknown".
+    var isBatteryAvailable: Bool { batteryLevel > 0 && batteryState != "Unknown" }
 
-    /// Bumped once at the end of every publish batch. Observers that need to
-    /// react per sample subscribe here; `objectWillChange` fires once per
-    /// property, i.e. ~20 times a tick.
-    @Published private(set) var lastSampleAt: Date = .distantPast
+    /// Folds one reading in. Rate metrics without a baseline (nil) and a disk query
+    /// that failed keep their previous value; sensors that read nil become unavailable.
+    mutating func apply(_ reading: StatsReading) {
+        if let cpu = reading.cpuUsage { cpuUsage = cpu }
+        gpuUsage = reading.gpuUsage ?? 0
+        isGPUAvailable = reading.gpuUsage != nil
+        memoryUsed = reading.memoryUsed
+        memoryTotal = reading.memoryTotal
+        if let disk = reading.disk {
+            diskUsedBytes = disk.usedBytes
+            diskTotalBytes = disk.totalBytes
+        }
+        if let network = reading.network {
+            networkDownBytes = network.downBytesPerSecond
+            networkUpBytes = network.upBytesPerSecond
+        }
+        batteryLevel = reading.batteryLevel
+        batteryState = reading.batteryState
+        fanRPM = reading.fanRPM ?? 0
+        isFanAvailable = reading.fanRPM != nil
+        temperature = reading.temperature ?? 0
+        isTemperatureAvailable = reading.temperature != nil
+    }
+}
 
-    /// Number of logical cores seen by the last CPU sample.
-    private(set) var coreCount: Int = 0
+/// One pass over the samplers. Optionals are readings that can be missing: rates
+/// before a baseline exists, and sensors this Mac does not expose.
+struct StatsReading {
+    var cpuUsage: Double? = nil
+    var gpuUsage: Double? = nil
+    var memoryUsed: UInt64 = 0
+    var memoryTotal: UInt64 = 0
+    var disk: DiskSample? = nil
+    var network: NetworkSample? = nil
+    var batteryLevel: Int = 0
+    var batteryState: String = "Unknown"
+    var fanRPM: Int? = nil
+    var temperature: Double? = nil
+}
 
-    private let queue = DispatchQueue(label: "com.macstats.StatsEngine.sampler", qos: .utility)
-    private let lock = NSLock()
-    private var timer: DispatchSourceTimer?
-    private var updateInterval: Double = 1.0
+/// The hardware side of the engine, injectable so tests can drive it with fixed
+/// readings. Only ever called on the engine's sampler queue.
+protocol StatsSampler: AnyObject {
+    /// Takes a first sample of the delta-based metrics so the next read has a baseline.
+    func primeBaselines()
+    /// Forgets the baselines so a read after a pause is not one huge delta.
+    func resetBaselines()
+    func read() -> StatsReading
+}
 
+final class LiveStatsSampler: StatsSampler {
     private let cpu = CPUMetrics()
     private let disk = DiskMetrics()
     private let network = NetworkMetrics()
     private let battery = BatteryMetrics()
 
-    init() {
-        // No sampling until start(); the timer is owned solely by start()/stop().
+    func primeBaselines() {
+        _ = cpu.sample()
+        _ = network.sample()
+    }
+
+    func resetBaselines() {
+        cpu.reset()
+        network.reset()
+    }
+
+    func read() -> StatsReading {
         let memory = MemoryMetrics.sample()
-        memoryTotal = memory.total
-        memoryUsed = memory.used
-        memoryPressure = memory.pressure
+        let battery = battery.sample()
+        return StatsReading(cpuUsage: cpu.sample()?.total,
+                            gpuUsage: GPUMetrics.sample(),
+                            memoryUsed: memory.used,
+                            memoryTotal: memory.total,
+                            disk: disk.sample(),
+                            network: network.sample(),
+                            batteryLevel: battery.level,
+                            batteryState: battery.state,
+                            fanRPM: SMCService.shared.readFanRPM(),
+                            temperature: SMCService.shared.readCPUTemperature())
+    }
+}
+
+final class StatsEngine: ObservableObject {
+    static let shared = StatsEngine()
+
+    /// Replaced at most once per tick, and only when a value actually changed.
+    @Published private(set) var snapshot = StatsSnapshot()
+
+    /// `.workItem` drains autoreleased Foundation/IOKit objects after every tick
+    /// instead of letting them pile up in the queue's pool.
+    private let queue = DispatchQueue(label: "com.macstats.StatsEngine.sampler",
+                                      qos: .utility,
+                                      autoreleaseFrequency: .workItem)
+    /// Guards `timer`, `updateInterval` and `pendingSnapshot`.
+    private let lock = NSLock()
+    private var timer: DispatchSourceTimer?
+    private var updateInterval: Double = 1.0
+
+    private let sampler: StatsSampler
+    /// The sampler-side copy that readings are folded into. Only touched on `queue`.
+    private var latest = StatsSnapshot()
+    /// Non-nil while a main-thread delivery is queued. Later ticks just replace it,
+    /// so a stalled main thread gets one update when it wakes, not a backlog.
+    private var pendingSnapshot: StatsSnapshot?
+
+    init(sampler: StatsSampler = LiveStatsSampler()) {
+        // No sampling until start(); the timer is owned solely by start()/stop().
+        self.sampler = sampler
     }
 
     // MARK: - Lifecycle
+
+    var isRunning: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return timer != nil
+    }
 
     /// Idempotent: a second call while running is a no-op.
     func start() {
@@ -70,27 +159,25 @@ final class StatsEngine: ObservableObject {
         // Drop the delta baselines so a later start() cannot report the whole idle gap as one tick.
         queue.async { [weak self] in
             guard let self else { return }
-            self.cpu.reset()
-            self.network.reset()
-            DispatchQueue.main.async {
-                self.cpuUsage = 0
-                self.cpuUserUsage = 0
-                self.cpuSystemUsage = 0
-                self.gpuUsage = 0
-                self.networkUpBytes = 0
-                self.networkDownBytes = 0
-            }
+            self.sampler.resetBaselines()
+            self.latest.cpuUsage = 0
+            self.latest.gpuUsage = 0
+            self.latest.networkDownBytes = 0
+            self.latest.networkUpBytes = 0
+            self.publish(self.latest)
         }
     }
 
-    /// Restarts the timer with a new period, clamped to 0.5...60 seconds.
+    /// Restarts the timer with a new period, clamped to 0.5...60 seconds. An unchanged
+    /// period is a no-op, so callers can re-apply the setting freely.
     func setUpdateInterval(_ seconds: Double) {
         let clamped = Self.normalizedUpdateInterval(seconds)
         lock.lock()
         defer { lock.unlock() }
+        guard clamped != updateInterval else { return }
         updateInterval = clamped
-        guard timer != nil else { return }
-        timer?.cancel()
+        guard let running = timer else { return }
+        running.cancel()
         timer = nil
         startTimerLocked()
     }
@@ -106,9 +193,7 @@ final class StatsEngine: ObservableObject {
         // samples, so without this the popover would read 0 for a whole interval
         // (up to 30s) every time polling resumes.
         queue.async { [weak self] in
-            guard let self else { return }
-            _ = self.cpu.sample()
-            _ = self.network.sample()
+            self?.sampler.primeBaselines()
         }
 
         let source = DispatchSource.makeTimerSource(queue: queue)
@@ -122,50 +207,40 @@ final class StatsEngine: ObservableObject {
 
     // MARK: - Sampling
 
+    /// Takes one sample synchronously, bypassing the timer. For tests.
+    func sampleNow() {
+        queue.sync { tick() }
+    }
+
+    /// Returns once all work queued on the sampler so far has run. For tests.
+    func waitUntilIdle() {
+        queue.sync {}
+    }
+
     /// Runs on `queue`. Samples everything off the main thread, then publishes once.
     private func tick() {
-        let cpuSample = cpu.sample()
-        let memorySample = MemoryMetrics.sample()
-        let gpuSample = GPUMetrics.sample()
-        let diskSample = disk.sample()
-        let networkSample = network.sample()
-        let batterySample = battery.sample()
-        let rpm = SMCService.shared.readFanRPM()
-        let celsius = SMCService.shared.readCPUTemperature()
-        let cores = cpu.coreCount
+        latest.apply(sampler.read())
+        publish(latest)
+    }
+
+    /// Runs on `queue`. Coalesces deliveries: at most one main-thread hop is queued
+    /// at a time, and it carries the newest snapshot.
+    private func publish(_ snapshot: StatsSnapshot) {
+        lock.lock()
+        let deliveryQueued = pendingSnapshot != nil
+        pendingSnapshot = snapshot
+        lock.unlock()
+        guard !deliveryQueued else { return }
 
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            self.coreCount = cores
-
-            // First sample after start()/setUpdateInterval has no baseline: leave deltas at 0.
-            if let cpuSample {
-                self.cpuUsage = cpuSample.total
-                self.cpuUserUsage = cpuSample.user
-                self.cpuSystemUsage = cpuSample.system
+            self.lock.lock()
+            let next = self.pendingSnapshot
+            self.pendingSnapshot = nil
+            self.lock.unlock()
+            if let next, next != self.snapshot {
+                self.snapshot = next
             }
-            self.memoryUsed = memorySample.used
-            self.memoryTotal = memorySample.total
-            self.memoryPressure = memorySample.pressure
-            self.gpuUsage = gpuSample ?? 0
-            if let diskSample {
-                self.diskUsedBytes = diskSample.usedBytes
-                self.diskTotalBytes = diskSample.totalBytes
-            }
-            if let networkSample {
-                self.networkDownBytes = networkSample.downBytesPerSecond
-                self.networkUpBytes = networkSample.upBytesPerSecond
-            }
-            self.batteryLevel = batterySample.level
-            self.batteryState = batterySample.state
-            self.batteryIsCharging = batterySample.isCharging
-            self.batteryHealth = batterySample.health
-            self.batteryCycleCount = batterySample.cycleCount
-            self.fanRPM = rpm ?? 0
-            self.isFanAvailable = rpm != nil
-            self.temperature = celsius ?? 0
-            self.isTemperatureAvailable = celsius != nil
-            self.lastSampleAt = Date()
         }
     }
 }

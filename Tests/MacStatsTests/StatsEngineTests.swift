@@ -1,144 +1,236 @@
+import Combine
 import XCTest
 @testable import MacStats
 
-/// Contract tests for `StatsEngine`.
-///
-/// The engine samples real hardware, so the assertions here only cover
-/// invariants that hold on every Mac: ranges, monotonic bounds, the memory
-/// total reported by the OS, and lifecycle safety. Nothing here assumes a
-/// fan, a battery, a discrete GPU or working SMC access.
+/// Hands the engine scripted readings and records how it was driven. Called on the
+/// engine's sampler queue; tests read the counters after `waitUntilIdle()`.
+private final class FakeSampler: StatsSampler {
+    var readings: [StatsReading] = []
+    var fallback = StatsReading(memoryUsed: 1, memoryTotal: 2)
+    var onRead: () -> Void = {}
+    private(set) var primeCount = 0
+    private(set) var resetCount = 0
+    private(set) var readCount = 0
+
+    func primeBaselines() { primeCount += 1 }
+    func resetBaselines() { resetCount += 1 }
+
+    func read() -> StatsReading {
+        readCount += 1
+        onRead()
+        return readings.isEmpty ? fallback : readings.removeFirst()
+    }
+}
+
+/// Engine behaviour driven by `FakeSampler`: no hardware, no fixed sleeps. Main-thread
+/// deliveries are awaited with expectations, never by spinning the run loop for a while.
 @MainActor
 final class StatsEngineTests: XCTestCase {
+    private var sampler: FakeSampler!
+    private var engine: StatsEngine!
+    private var published: [StatsSnapshot] = []
+    private var cancellables = Set<AnyCancellable>()
 
-    private var engine: StatsEngine { StatsEngine.shared }
+    override func setUp() async throws {
+        try await super.setUp()
+        sampler = FakeSampler()
+        engine = StatsEngine(sampler: sampler)
+        published = []
+        // `$snapshot` replays the current value on subscription; only count new ones.
+        engine.$snapshot.dropFirst()
+            .sink { [unowned self] in self.published.append($0) }
+            .store(in: &cancellables)
+    }
 
     override func tearDown() async throws {
-        StatsEngine.shared.stop()
+        engine.stop()
+        engine.waitUntilIdle()
+        cancellables.removeAll()
         try await super.tearDown()
     }
 
-    /// Runs the engine briefly so that at least one sample has been published.
-    private func sampleOnce(interval: Double = 0.1) {
-        let engine = self.engine
-        engine.setUpdateInterval(interval)
+    /// Runs everything already queued on the main thread, including the engine's
+    /// delivery block, which was enqueued before this one.
+    private func flushMain() {
+        let flushed = expectation(description: "main queue flushed")
+        DispatchQueue.main.async { flushed.fulfill() }
+        wait(for: [flushed], timeout: 2)
+    }
+
+    private func reading(cpu: Double? = 10, gpu: Double? = 20) -> StatsReading {
+        StatsReading(cpuUsage: cpu, gpuUsage: gpu,
+                     memoryUsed: 4_000, memoryTotal: 8_000,
+                     disk: DiskSample(usedBytes: 300, totalBytes: 500),
+                     network: NetworkSample(downBytesPerSecond: 1_000, upBytesPerSecond: 500),
+                     batteryLevel: 80, batteryState: "Discharging",
+                     fanRPM: 2_000, temperature: 45)
+    }
+
+    // MARK: - Publishing
+
+    func testSampleIsPublishedOnTheMainThread() {
+        sampler.readings = [reading()]
+        engine.sampleNow()
+        flushMain()
+
+        XCTAssertEqual(published.count, 1)
+        let s = engine.snapshot
+        XCTAssertEqual(s.cpuUsage, 10)
+        XCTAssertEqual(s.gpuUsage, 20)
+        XCTAssertTrue(s.isGPUAvailable)
+        XCTAssertEqual(s.memoryUsed, 4_000)
+        XCTAssertEqual(s.memoryTotal, 8_000)
+        XCTAssertEqual(s.diskUsedBytes, 300)
+        XCTAssertEqual(s.diskTotalBytes, 500)
+        XCTAssertEqual(s.networkDownBytes, 1_000)
+        XCTAssertEqual(s.networkUpBytes, 500)
+        XCTAssertEqual(s.batteryLevel, 80)
+        XCTAssertEqual(s.fanRPM, 2_000)
+        XCTAssertEqual(s.temperature, 45)
+    }
+
+    func testTicksQueuedWhileMainIsBusyCoalesceIntoOneUpdate() {
+        sampler.readings = [reading(cpu: 1), reading(cpu: 2), reading(cpu: 3)]
+        // The main thread is "busy" running this test, so none of these can be delivered yet.
+        engine.sampleNow()
+        engine.sampleNow()
+        engine.sampleNow()
+        flushMain()
+
+        XCTAssertEqual(published.map(\.cpuUsage), [3], "only the newest snapshot should reach the main thread")
+    }
+
+    func testUnchangedReadingIsNotRepublished() {
+        sampler.readings = [reading(), reading()]
+        engine.sampleNow()
+        flushMain()
+        engine.sampleNow()
+        flushMain()
+
+        XCTAssertEqual(published.count, 1)
+    }
+
+    // MARK: - Reading → snapshot
+
+    func testUnreadableGPUIsReportedUnavailableNotZeroPercent() {
+        sampler.readings = [reading(gpu: nil)]
+        engine.sampleNow()
+        flushMain()
+
+        XCTAssertFalse(engine.snapshot.isGPUAvailable)
+        XCTAssertEqual(engine.snapshot.gpuUsage, 0)
+    }
+
+    func testMissingSensorsAreUnavailable() {
+        var s = StatsSnapshot()
+        var r = reading()
+        r.fanRPM = nil
+        r.temperature = nil
+        s.apply(r)
+        XCTAssertFalse(s.isFanAvailable)
+        XCTAssertEqual(s.fanRPM, 0)
+        XCTAssertFalse(s.isTemperatureAvailable)
+        XCTAssertEqual(s.temperature, 0)
+    }
+
+    func testMissingRatesAndDiskKeepThePreviousValue() {
+        var s = StatsSnapshot()
+        s.apply(reading())
+        s.apply(StatsReading(cpuUsage: nil, memoryUsed: 1, memoryTotal: 2, disk: nil, network: nil))
+        XCTAssertEqual(s.cpuUsage, 10, "a CPU sample without a baseline must not reset the value")
+        XCTAssertEqual(s.diskTotalBytes, 500, "a failed disk query must keep the last capacity")
+        XCTAssertEqual(s.networkDownBytes, 1_000)
+        XCTAssertEqual(s.memoryUsed, 1)
+    }
+
+    func testBatteryAvailability() {
+        XCTAssertTrue(StatsSnapshot(batteryLevel: 50, batteryState: "Charging").isBatteryAvailable)
+        XCTAssertFalse(StatsSnapshot(batteryLevel: 0, batteryState: "AC Power").isBatteryAvailable)
+        XCTAssertFalse(StatsSnapshot(batteryLevel: 50, batteryState: "Unknown").isBatteryAvailable)
+    }
+
+    // MARK: - Lifecycle
+
+    func testRepeatedStartCreatesOneTimer() {
+        for _ in 0 ..< 5 { engine.start() }
+        engine.waitUntilIdle()
+        XCTAssertTrue(engine.isRunning)
+        XCTAssertEqual(sampler.primeCount, 1, "each timer creation primes the baselines once")
+    }
+
+    func testStopCancelsTheTimerAndDropsBaselines() {
         engine.start()
-        // Spin the main run loop so a main-thread timer can actually fire.
-        RunLoop.current.run(until: Date().addingTimeInterval(0.6))
         engine.stop()
+        engine.stop()
+        engine.waitUntilIdle()
+        XCTAssertFalse(engine.isRunning)
+        XCTAssertEqual(sampler.resetCount, 2)
     }
 
-    // MARK: - Singleton
-
-    func testSharedReturnsTheSameInstance() {
-        XCTAssertTrue(StatsEngine.shared === StatsEngine.shared)
+    func testStopBeforeStartIsSafe() {
+        engine.stop()
+        engine.waitUntilIdle()
+        XCTAssertFalse(engine.isRunning)
     }
 
-    // MARK: - Memory
+    func testStopZeroesRatesButKeepsLevels() {
+        sampler.readings = [reading()]
+        engine.sampleNow()
+        engine.stop()
+        engine.waitUntilIdle()
+        flushMain()
 
-    func testMemoryTotalMatchesProcessInfo() {
-        sampleOnce()
-        XCTAssertEqual(engine.memoryTotal, ProcessInfo.processInfo.physicalMemory)
+        let s = engine.snapshot
+        XCTAssertEqual(s.cpuUsage, 0)
+        XCTAssertEqual(s.gpuUsage, 0)
+        XCTAssertEqual(s.networkDownBytes, 0)
+        XCTAssertEqual(s.networkUpBytes, 0)
+        XCTAssertEqual(s.memoryUsed, 4_000)
+        XCTAssertEqual(s.diskTotalBytes, 500)
     }
 
-    func testMemoryTotalIsNonZero() {
-        sampleOnce()
-        XCTAssertGreaterThan(engine.memoryTotal, 0)
-    }
-
-    func testMemoryUsedDoesNotExceedTotal() {
-        sampleOnce()
-        XCTAssertLessThanOrEqual(engine.memoryUsed, engine.memoryTotal)
-    }
-
-    // MARK: - Percentages
-
-    func testCPUUsageStaysWithinPercentageRange() {
-        sampleOnce()
-        XCTAssertFalse(engine.cpuUsage.isNaN, "cpuUsage must never be NaN")
-        XCTAssertGreaterThanOrEqual(engine.cpuUsage, 0)
-        XCTAssertLessThanOrEqual(engine.cpuUsage, 100)
-    }
-
-    func testGPUUsageStaysWithinPercentageRange() {
-        sampleOnce()
-        XCTAssertFalse(engine.gpuUsage.isNaN, "gpuUsage must never be NaN")
-        XCTAssertGreaterThanOrEqual(engine.gpuUsage, 0)
-        XCTAssertLessThanOrEqual(engine.gpuUsage, 100)
-    }
-
-    func testEveryPublishedPercentageStaysInRangeAcrossSamples() {
-        let engine = self.engine
-        engine.setUpdateInterval(0.1)
+    func testTimerSamplesWhileRunning() {
+        let sampled = expectation(description: "timer fired")
+        sampled.assertForOverFulfill = false
+        sampler.onRead = { sampled.fulfill() }
+        engine.setUpdateInterval(0.5)
         engine.start()
-        for _ in 0 ..< 3 {
-            RunLoop.current.run(until: Date().addingTimeInterval(0.25))
-            XCTAssertTrue((0 ... 100).contains(engine.cpuUsage), "cpuUsage out of range: \(engine.cpuUsage)")
-            XCTAssertTrue((0 ... 100).contains(engine.gpuUsage), "gpuUsage out of range: \(engine.gpuUsage)")
-        }
-        engine.stop()
-    }
-
-    // MARK: - Battery
-
-    func testBatteryLevelStaysWithinPercentageRange() {
-        sampleOnce()
-        XCTAssertGreaterThanOrEqual(engine.batteryLevel, 0)
-        XCTAssertLessThanOrEqual(engine.batteryLevel, 100)
-    }
-
-    /// A desktop Mac has no battery; the engine must still publish a usable
-    /// (non-nil, non-empty) state string rather than an empty placeholder.
-    func testBatteryStateIsNonEmpty() {
-        sampleOnce()
-        XCTAssertFalse(engine.batteryState.isEmpty)
-    }
-
-    // MARK: - Throughput counters
-
-    func testThroughputCountersAreNonNegativeAndFinite() {
-        sampleOnce()
-        for (name, value) in [
-            ("networkUpBytes", engine.networkUpBytes),
-            ("networkDownBytes", engine.networkDownBytes),
-        ] {
-            XCTAssertTrue(value.isFinite, "\(name) must be finite, got \(value)")
-            XCTAssertGreaterThanOrEqual(value, 0, "\(name) must not be negative")
-        }
-    }
-
-    // MARK: - Disk capacity
-
-    func testDiskUsageFitsWithinTotal() {
-        sampleOnce()
-        XCTAssertGreaterThan(engine.diskTotalBytes, 0, "startup volume capacity must be readable")
-        XCTAssertLessThanOrEqual(engine.diskUsedBytes, engine.diskTotalBytes)
-    }
-
-    // MARK: - Hardware availability
-
-    /// On a fanless Mac (and anywhere SMC access fails) the engine must report
-    /// the fan as unavailable and must not invent an RPM figure.
-    func testFanRPMIsZeroWhenNoFanIsAvailable() {
-        sampleOnce()
-        XCTAssertGreaterThanOrEqual(engine.fanRPM, 0)
-        if !engine.isFanAvailable {
-            XCTAssertEqual(engine.fanRPM, 0)
-        }
-    }
-
-    /// Likewise for temperature: unavailable means 0, not a fabricated value.
-    func testTemperatureIsPlausibleOrReportedUnavailable() {
-        sampleOnce()
-        XCTAssertFalse(engine.temperature.isNaN, "temperature must never be NaN")
-        if engine.isTemperatureAvailable {
-            XCTAssertGreaterThan(engine.temperature, 0)
-            XCTAssertLessThan(engine.temperature, 150)
-        } else {
-            XCTAssertEqual(engine.temperature, 0, accuracy: 0.0001)
-        }
+        wait(for: [sampled], timeout: 5)
     }
 
     // MARK: - Update interval
+
+    func testUnchangedIntervalDoesNotRestartTheTimer() {
+        engine.setUpdateInterval(2)
+        engine.start()
+        engine.setUpdateInterval(2)
+        engine.setUpdateInterval(2.0000)
+        engine.waitUntilIdle()
+        XCTAssertEqual(sampler.primeCount, 1)
+    }
+
+    func testChangedIntervalRestartsARunningTimer() {
+        engine.start()
+        engine.setUpdateInterval(5)
+        engine.waitUntilIdle()
+        XCTAssertTrue(engine.isRunning)
+        XCTAssertEqual(sampler.primeCount, 2)
+    }
+
+    func testIntervalChangeWhileStoppedDoesNotStart() {
+        engine.setUpdateInterval(5)
+        engine.waitUntilIdle()
+        XCTAssertFalse(engine.isRunning)
+        XCTAssertEqual(sampler.primeCount, 0)
+    }
+
+    func testOutOfRangeIntervalsKeepTheEngineRunning() {
+        engine.start()
+        for interval in [-100.0, -1.0, 0.0, 0.0001, 1e9, .greatestFiniteMagnitude, .nan, .infinity, -.infinity] {
+            engine.setUpdateInterval(interval)
+        }
+        XCTAssertTrue(engine.isRunning)
+    }
 
     func testNormalizedUpdateIntervalUsesOneSecondForNonFiniteInput() {
         XCTAssertEqual(StatsEngine.normalizedUpdateInterval(.nan), 1.0)
@@ -151,91 +243,55 @@ final class StatsEngineTests: XCTestCase {
         XCTAssertEqual(StatsEngine.normalizedUpdateInterval(10), 10)
         XCTAssertEqual(StatsEngine.normalizedUpdateInterval(1e9), 60)
     }
+}
 
-    func testSetUpdateIntervalAcceptsOutOfRangeValuesWithoutBreakingSampling() {
-        let engine = self.engine
-        for interval in [-100.0, -1.0, 0.0, 0.0001, 1e9, Double.greatestFiniteMagnitude] {
-            engine.setUpdateInterval(interval)
+/// Smoke tests against real hardware. They only assert invariants that hold on
+/// every Mac — nothing assumes a fan, a battery, a readable GPU or SMC access — and
+/// wait on events rather than fixed sleeps.
+@MainActor
+final class StatsEngineLiveTests: XCTestCase {
+
+    func testSharedReturnsTheSameInstance() {
+        XCTAssertTrue(StatsEngine.shared === StatsEngine.shared)
+    }
+
+    func testLiveSamplerReadsPlausibleValues() {
+        let sampler = LiveStatsSampler()
+        sampler.primeBaselines()
+        let r = sampler.read()
+
+        XCTAssertEqual(r.memoryTotal, ProcessInfo.processInfo.physicalMemory)
+        XCTAssertLessThanOrEqual(r.memoryUsed, r.memoryTotal)
+        if let cpu = r.cpuUsage { XCTAssertTrue((0 ... 100).contains(cpu), "cpu \(cpu)") }
+        if let gpu = r.gpuUsage { XCTAssertTrue((0 ... 100).contains(gpu), "gpu \(gpu)") }
+        XCTAssertNotNil(r.disk, "startup volume capacity must be readable")
+        if let disk = r.disk {
+            XCTAssertGreaterThan(disk.totalBytes, 0)
+            XCTAssertLessThanOrEqual(disk.usedBytes, disk.totalBytes)
         }
-        // Whatever clamping happened, the engine must still run and publish
-        // sane values afterwards.
-        sampleOnce()
-        XCTAssertTrue((0 ... 100).contains(engine.cpuUsage))
-        XCTAssertEqual(engine.memoryTotal, ProcessInfo.processInfo.physicalMemory)
+        XCTAssertTrue((0 ... 100).contains(r.batteryLevel))
+        XCTAssertFalse(r.batteryState.isEmpty)
+        if let rpm = r.fanRPM { XCTAssertGreaterThanOrEqual(rpm, 0) }
+        if let celsius = r.temperature { XCTAssertTrue(celsius > 0 && celsius < 150, "temperature \(celsius)") }
     }
 
-    func testSetUpdateIntervalToleratesNonFiniteInput() {
-        let engine = self.engine
-        engine.setUpdateInterval(.nan)
-        engine.setUpdateInterval(.infinity)
-        engine.setUpdateInterval(-.infinity)
-        engine.setUpdateInterval(1.0)
-        sampleOnce()
-        XCTAssertTrue((0 ... 100).contains(engine.cpuUsage))
-    }
-
-    func testSetUpdateIntervalIsSafeWhileRunning() {
-        let engine = self.engine
+    func testSharedEnginePublishesWhileRunning() {
+        let engine = StatsEngine.shared
+        let published = expectation(description: "a sample was published")
+        let subscription = engine.$snapshot
+            .dropFirst()
+            .first { $0.memoryTotal > 0 }
+            .sink { _ in published.fulfill() }
         engine.start()
-        engine.setUpdateInterval(0.1)
-        RunLoop.current.run(until: Date().addingTimeInterval(0.2))
-        engine.setUpdateInterval(5.0)
-        RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+        wait(for: [published], timeout: 10)
         engine.stop()
-        XCTAssertTrue((0 ... 100).contains(engine.cpuUsage))
-    }
+        subscription.cancel()
 
-    // MARK: - Lifecycle
-
-    func testRepeatedStartIsSafeAndDoesNotLeaveWorkBehindAfterStop() {
-        let engine = self.engine
-        engine.setUpdateInterval(0.1)
-        for _ in 0 ..< 5 {
-            engine.start()
-        }
-        RunLoop.current.run(until: Date().addingTimeInterval(0.3))
-        engine.stop()
-
-        // Let any sample that was already in flight when stop() was called
-        // finish publishing before taking the baseline.
-        RunLoop.current.run(until: Date().addingTimeInterval(0.2))
-
-        // After a single stop, no further sampling may occur — if repeated
-        // start() had leaked a timer per call, one stop() would not silence it.
-        let cpuAfterStop = engine.cpuUsage
-        let memoryAfterStop = engine.memoryUsed
-        RunLoop.current.run(until: Date().addingTimeInterval(0.4))
-        XCTAssertEqual(engine.cpuUsage, cpuAfterStop, accuracy: 0.0001,
-                       "cpuUsage changed after stop() — a timer is still running")
-        XCTAssertEqual(engine.memoryUsed, memoryAfterStop,
-                       "memoryUsed changed after stop() — a timer is still running")
-    }
-
-    func testRepeatedStopIsSafe() {
-        let engine = self.engine
-        engine.start()
-        for _ in 0 ..< 5 {
-            engine.stop()
-        }
-        XCTAssertTrue((0 ... 100).contains(engine.cpuUsage))
-    }
-
-    func testStopBeforeStartIsSafe() {
-        let engine = self.engine
-        engine.stop()
-        engine.stop()
-        XCTAssertTrue((0 ... 100).contains(engine.cpuUsage))
-    }
-
-    func testStartStopCyclesAreSafe() {
-        let engine = self.engine
-        engine.setUpdateInterval(0.1)
-        for _ in 0 ..< 3 {
-            engine.start()
-            RunLoop.current.run(until: Date().addingTimeInterval(0.15))
-            engine.stop()
-        }
-        XCTAssertTrue((0 ... 100).contains(engine.cpuUsage))
-        XCTAssertEqual(engine.memoryTotal, ProcessInfo.processInfo.physicalMemory)
+        let s = engine.snapshot
+        XCTAssertEqual(s.memoryTotal, ProcessInfo.processInfo.physicalMemory)
+        XCTAssertTrue((0 ... 100).contains(s.cpuUsage))
+        XCTAssertTrue((0 ... 100).contains(s.gpuUsage))
+        XCTAssertTrue(s.networkDownBytes.isFinite && s.networkDownBytes >= 0)
+        XCTAssertTrue(s.networkUpBytes.isFinite && s.networkUpBytes >= 0)
     }
 }

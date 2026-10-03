@@ -7,10 +7,11 @@ import XCTest
 final class MenuBarRendererTests: XCTestCase {
 
     /// A fully-populated snapshot; individual tests override the fields they care about.
-    private func snapshot() -> MenuBarSnapshot {
-        MenuBarSnapshot(
+    private func snapshot() -> StatsSnapshot {
+        StatsSnapshot(
             cpuUsage: 23.4,
             gpuUsage: 15.2,
+            isGPUAvailable: true,
             memoryUsed: 8_804_682_138,   // ~8.2 GiB
             memoryTotal: 17_179_869_184, // 16 GiB
             diskUsedBytes: 300_000_000_000,  // 300 GB
@@ -87,6 +88,13 @@ final class MenuBarRendererTests: XCTestCase {
         s.isTemperatureAvailable = false
         s.temperature = 0
         XCTAssertEqual(MenuBarRenderer.segment(.temp, s), "TMP —")
+    }
+
+    func testGPUSegmentReportsUnavailable() {
+        var s = snapshot()
+        s.isGPUAvailable = false
+        s.gpuUsage = 0
+        XCTAssertEqual(MenuBarRenderer.segment(.gpu, s), "GPU —")
     }
 
     func testBatterySegmentReportsUnavailableOnDesktops() {
