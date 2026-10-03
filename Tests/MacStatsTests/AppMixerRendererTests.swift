@@ -124,7 +124,8 @@ final class AppMixerRendererTests: XCTestCase {
 }
 
 /// An interleaved 32-bit float `AudioBufferList` with owned sample storage.
-private final class TestBufferList {
+/// Shared with `AppMixerSessionTests`.
+final class TestBufferList {
     let list: UnsafeMutableAudioBufferListPointer
 
     var unsafePointer: UnsafePointer<AudioBufferList> { UnsafePointer(list.unsafeMutablePointer) }

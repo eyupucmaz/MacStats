@@ -23,15 +23,17 @@ final class AppMixerSession {
     private var ioProcID: AudioDeviceIOProcID?
     private var renderer: AppMixerRenderer?
     private var started = false
+    private let hardware: AppMixerHardware
 
-    init(outputDeviceID: AudioObjectID, processes: [AppMixerProcess]) throws {
+    init(outputDeviceID: AudioObjectID, processes: [AppMixerProcess], hardware: AppMixerHardware = CoreAudioAppMixerHardware()) throws {
         precondition(!processes.isEmpty)
         self.outputDeviceID = outputDeviceID
         self.processes = processes
+        self.hardware = hardware
 
         do {
-            let outputUID = try AppMixerCoreAudio.string(of: outputDeviceID, selector: kAudioDevicePropertyDeviceUID)
-            try AppMixerCoreAudio.requireFloatOutput(outputDeviceID)
+            let outputUID = try hardware.deviceUID(outputDeviceID)
+            try hardware.requireFloatOutput(outputDeviceID)
 
             var tapUIDs: [String] = []
             var tapFormat: AudioStreamBasicDescription?
@@ -41,12 +43,12 @@ final class AppMixerSession {
                 description.isPrivate = true
                 description.muteBehavior = .mutedWhenTapped
                 var tapID = AudioObjectID(kAudioObjectUnknown)
-                guard AudioHardwareCreateProcessTap(description, &tapID) == noErr else {
+                guard hardware.createProcessTap(description, &tapID) == noErr else {
                     throw AppMixerError.unavailable(L10n.string("MacStats could not create an application audio tap."))
                 }
                 tapIDs.append(tapID)
-                tapUIDs.append(try AppMixerCoreAudio.string(of: tapID, selector: kAudioTapPropertyUID))
-                let format = try AppMixerCoreAudio.tapFormat(tapID)
+                tapUIDs.append(try hardware.tapUID(tapID))
+                let format = try hardware.tapFormat(tapID)
                 if let tapFormat, tapFormat.mChannelsPerFrame != format.mChannelsPerFrame || tapFormat.mFormatFlags != format.mFormatFlags {
                     throw AppMixerError.unavailable(L10n.string("MacStats received an unexpected application audio format."))
                 }
@@ -70,24 +72,24 @@ final class AppMixerSession {
                     [kAudioSubTapUIDKey: $0, kAudioSubTapDriftCompensationKey: true]
                 }
             ]
-            guard AudioHardwareCreateAggregateDevice(description as CFDictionary, &aggregateID) == noErr else {
+            guard hardware.createAggregateDevice(description, &aggregateID) == noErr else {
                 throw AppMixerError.unavailable(L10n.string("MacStats could not create the application mixer output."))
             }
 
             let buffersPerTap = tapFormat.mFormatFlags & kAudioFormatFlagIsNonInterleaved != 0
                 ? Int(tapFormat.mChannelsPerFrame) : 1
-            let (left, right) = try AppMixerCoreAudio.stereoPair(of: outputDeviceID)
+            let (left, right) = try hardware.stereoPair(of: outputDeviceID)
             let layout = AppMixerLayout(tapCount: processes.count, buffersPerTap: max(buffersPerTap, 1), left: left, right: right)
             let renderer = AppMixerRenderer(layout: layout, gains: processes.map(Self.effectiveGain))
             self.renderer = renderer
 
-            let status = AudioDeviceCreateIOProcIDWithBlock(&ioProcID, aggregateID, nil) { _, inputData, _, outputData, _ in
+            let status = hardware.createIOProcID(&ioProcID, device: aggregateID) { _, inputData, _, outputData, _ in
                 renderer.render(input: inputData, output: outputData)
             }
             guard status == noErr, let ioProcID else {
                 throw AppMixerError.unavailable(L10n.string("MacStats could not prepare the application mixer stream."))
             }
-            guard AudioDeviceStart(aggregateID, ioProcID) == noErr else {
+            guard hardware.start(aggregateID, ioProcID) == noErr else {
                 throw AppMixerError.unavailable(L10n.string("MacStats could not start the application mixer stream."))
             }
             started = true
@@ -102,10 +104,10 @@ final class AppMixerSession {
     /// Idempotent. `AudioDeviceStop` returns only once the IOProc has
     /// finished, so the renderer can be released afterwards.
     func stop() {
-        if started, let ioProcID { AudioDeviceStop(aggregateID, ioProcID) }
-        if let ioProcID { AudioDeviceDestroyIOProcID(aggregateID, ioProcID) }
-        if aggregateID != kAudioObjectUnknown { AudioHardwareDestroyAggregateDevice(aggregateID) }
-        for tapID in tapIDs { AudioHardwareDestroyProcessTap(tapID) }
+        if started, let ioProcID { hardware.stop(aggregateID, ioProcID) }
+        if let ioProcID { hardware.destroyIOProcID(aggregateID, ioProcID) }
+        if aggregateID != kAudioObjectUnknown { hardware.destroyAggregateDevice(aggregateID) }
+        for tapID in tapIDs { hardware.destroyProcessTap(tapID) }
         renderer?.deallocate()
         renderer = nil
         tapIDs.removeAll(); aggregateID = AudioObjectID(kAudioObjectUnknown); ioProcID = nil; started = false
@@ -118,6 +120,84 @@ final class AppMixerSession {
 
     static func effectiveGain(_ process: AppMixerProcess) -> Float {
         process.muted ? 0 : min(max(process.gain, 0), 1)
+    }
+}
+
+/// The Core Audio calls `AppMixerSession` makes, mirroring the C API's
+/// status-and-out-parameter shape. Kept behind a protocol so setup, cleanup
+/// after a partial failure and teardown can be exercised without creating
+/// real taps or aggregate devices. Only setup and teardown go through it;
+/// the IOProc block is handed to Core Audio unchanged.
+@available(macOS 14.2, *)
+protocol AppMixerHardware {
+    func deviceUID(_ deviceID: AudioObjectID) throws -> String
+    func requireFloatOutput(_ deviceID: AudioObjectID) throws
+    func stereoPair(of deviceID: AudioObjectID) throws -> (AppMixerChannel, AppMixerChannel)
+    func createProcessTap(_ description: CATapDescription, _ tapID: inout AudioObjectID) -> OSStatus
+    func tapUID(_ tapID: AudioObjectID) throws -> String
+    func tapFormat(_ tapID: AudioObjectID) throws -> AudioStreamBasicDescription
+    func createAggregateDevice(_ description: [String: Any], _ deviceID: inout AudioObjectID) -> OSStatus
+    func createIOProcID(_ ioProcID: inout AudioDeviceIOProcID?, device: AudioObjectID, block: @escaping AudioDeviceIOBlock) -> OSStatus
+    func start(_ deviceID: AudioObjectID, _ ioProcID: AudioDeviceIOProcID) -> OSStatus
+    func stop(_ deviceID: AudioObjectID, _ ioProcID: AudioDeviceIOProcID)
+    func destroyIOProcID(_ deviceID: AudioObjectID, _ ioProcID: AudioDeviceIOProcID)
+    func destroyAggregateDevice(_ deviceID: AudioObjectID)
+    func destroyProcessTap(_ tapID: AudioObjectID)
+}
+
+/// Production `AppMixerHardware`: forwards straight to Core Audio.
+@available(macOS 14.2, *)
+struct CoreAudioAppMixerHardware: AppMixerHardware {
+    func deviceUID(_ deviceID: AudioObjectID) throws -> String {
+        try AppMixerCoreAudio.string(of: deviceID, selector: kAudioDevicePropertyDeviceUID)
+    }
+
+    func requireFloatOutput(_ deviceID: AudioObjectID) throws {
+        try AppMixerCoreAudio.requireFloatOutput(deviceID)
+    }
+
+    func stereoPair(of deviceID: AudioObjectID) throws -> (AppMixerChannel, AppMixerChannel) {
+        try AppMixerCoreAudio.stereoPair(of: deviceID)
+    }
+
+    func createProcessTap(_ description: CATapDescription, _ tapID: inout AudioObjectID) -> OSStatus {
+        AudioHardwareCreateProcessTap(description, &tapID)
+    }
+
+    func tapUID(_ tapID: AudioObjectID) throws -> String {
+        try AppMixerCoreAudio.string(of: tapID, selector: kAudioTapPropertyUID)
+    }
+
+    func tapFormat(_ tapID: AudioObjectID) throws -> AudioStreamBasicDescription {
+        try AppMixerCoreAudio.tapFormat(tapID)
+    }
+
+    func createAggregateDevice(_ description: [String: Any], _ deviceID: inout AudioObjectID) -> OSStatus {
+        AudioHardwareCreateAggregateDevice(description as CFDictionary, &deviceID)
+    }
+
+    func createIOProcID(_ ioProcID: inout AudioDeviceIOProcID?, device: AudioObjectID, block: @escaping AudioDeviceIOBlock) -> OSStatus {
+        AudioDeviceCreateIOProcIDWithBlock(&ioProcID, device, nil, block)
+    }
+
+    func start(_ deviceID: AudioObjectID, _ ioProcID: AudioDeviceIOProcID) -> OSStatus {
+        AudioDeviceStart(deviceID, ioProcID)
+    }
+
+    func stop(_ deviceID: AudioObjectID, _ ioProcID: AudioDeviceIOProcID) {
+        AudioDeviceStop(deviceID, ioProcID)
+    }
+
+    func destroyIOProcID(_ deviceID: AudioObjectID, _ ioProcID: AudioDeviceIOProcID) {
+        AudioDeviceDestroyIOProcID(deviceID, ioProcID)
+    }
+
+    func destroyAggregateDevice(_ deviceID: AudioObjectID) {
+        AudioHardwareDestroyAggregateDevice(deviceID)
+    }
+
+    func destroyProcessTap(_ tapID: AudioObjectID) {
+        AudioHardwareDestroyProcessTap(tapID)
     }
 }
 
