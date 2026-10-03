@@ -1,0 +1,33 @@
+import SwiftUI
+
+/// The detail page for each card. Each metric's issue (#25–#32) replaces its
+/// placeholder line with the real page.
+struct MetricDetailView: View {
+    let metric: MenuBarMetric
+
+    var body: some View {
+        switch metric {
+        case .cpu: DetailPlaceholderPage(metric: .cpu)
+        case .gpu: DetailPlaceholderPage(metric: .gpu)
+        case .ram: DetailPlaceholderPage(metric: .ram)
+        case .disk: DetailPlaceholderPage(metric: .disk)
+        case .network: DetailPlaceholderPage(metric: .network)
+        case .battery: DetailPlaceholderPage(metric: .battery)
+        case .fan: DetailPlaceholderPage(metric: .fan)
+        case .temp: DetailPlaceholderPage(metric: .temp)
+        }
+    }
+}
+
+/// Header plus a "coming soon" note, so every card opens something until its page lands.
+struct DetailPlaceholderPage: View {
+    let metric: MenuBarMetric
+
+    static var title: String { L10n.string("Details coming soon") }
+    static var reason: String { L10n.string("Charts and a breakdown of this number will appear here.") }
+
+    var body: some View {
+        DetailPage(metric: metric) {
+            DetailUnavailableView(title: Self.title, reason: Self.reason, icon: "chart.xyaxis.line")        }
+    }
+}
