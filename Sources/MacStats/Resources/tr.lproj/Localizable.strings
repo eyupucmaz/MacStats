@@ -552,3 +552,30 @@
 "gigabits" = "gigabit";
 "megabits" = "megabit";
 "kilobits" = "kilobit";
+
+/* MARK: GPU detail (#26) */
+
+/* GPU page section titles; "GPUs" heads the list on Macs with more than one GPU */
+"GPU Memory" = "GPU Belleği";
+"About This GPU" = "Bu GPU Hakkında";
+"GPUs" = "GPU'lar";
+/* GPU page chart lines: overall utilization (as on the card), the pixel pipeline and the geometry pipeline */
+"Overall" = "Genel";
+"Renderer" = "Oluşturucu";
+"Tiler" = "Döşeyici";
+"Renderer is the GPU's pixel work, tiler its geometry work." = "Oluşturucu GPU'nun piksel işini, döşeyici ise geometri işini gösterir.";
+/* GPU page, Macs with several GPUs: which GPU the renderer and tiler lines belong to */
+"Renderer and tiler: %@" = "Oluşturucu ve döşeyici: %@";
+/* GPU page: shown instead of the headline and chart when the driver reports no utilization */
+"macOS does not report GPU utilization for this Mac's graphics driver." = "macOS bu Mac'in grafik sürücüsü için GPU kullanımını bildirmiyor.";
+/* GPU page footnote */
+"Per-app GPU usage is not shown: macOS has no public API for it." = "Uygulama başına GPU kullanımı gösterilmez: macOS'te bunun için herkese açık bir API yok.";
+/* GPU memory rows: memory the driver has in use, has allocated, and dedicated video memory */
+"In use" = "Kullanımda";
+"Allocated" = "Ayrılmış";
+"Video memory" = "Video belleği";
+"Apple silicon has unified memory: the GPU uses the same RAM as the CPU, so this is part of the memory on the RAM page, not separate video memory." = "Apple silicon'da birleşik bellek vardır: GPU, CPU ile aynı RAM'i kullanır; bu yüzden bu bellek ayrı bir video belleği değil, RAM sayfasındaki belleğin bir parçasıdır.";
+/* About This GPU rows */
+"Model" = "Model";
+"GPU cores" = "GPU çekirdekleri";
+"Metal device" = "Metal aygıtı";
