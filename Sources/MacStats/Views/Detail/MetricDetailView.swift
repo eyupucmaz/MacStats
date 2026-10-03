@@ -14,7 +14,7 @@ struct MetricDetailView: View {
         case .network: NetworkDetailPage()
         case .battery: DetailPlaceholderPage(metric: .battery)
         case .fan: FanDetailPage()
-        case .temp: DetailPlaceholderPage(metric: .temp)
+        case .temp: TemperatureDetailPage()
         }
     }
 }

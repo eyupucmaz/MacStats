@@ -578,3 +578,31 @@
 "%@ percent of maximum speed" = "en yüksek hızın yüzde %@ kadarı";
 /* Fan page: caption under the chart on Macs with two fans */
 "Fan 2 is recorded while this page is open." = "Fan 2, bu sayfa açıkken kaydedilir.";
+
+/* MARK: Temperature detail (#32) */
+
+/* Temperature page: chart and section title, the card's CPU temperature over time */
+"CPU temperature" = "CPU sıcaklığı";
+/* Caption under the temperature chart */
+"The band is the thermal state macOS reports, recorded while this page is open." = "Şerit, macOS'un bildirdiği ısıl durumdur ve bu sayfa açıkken kaydedilir.";
+/* Temperature page: section listing every temperature sensor */
+"Sensors" = "Sensörler";
+/* Temperature sensor groups (Performance cores, Efficiency cores, GPU and Battery reuse earlier keys) */
+"SoC / other" = "SoC / diğer";
+"Storage" = "Depolama";
+/* Temperature page: one sensor of a group, numbered from 1, e.g. "Sensor 3" */
+"Sensor %@" = "Sensör %@";
+/* Temperature page, VoiceOver: a sensor group: its hottest reading now, then the lowest and highest reading of any of its sensors this session */
+"%@, hottest %@, lowest %@, highest %@" = "%@, en sıcak %@, en düşük %@, en yüksek %@";
+/* Temperature page, VoiceOver: a sensor, its reading now, and its lowest and highest reading this session */
+"%@, %@, lowest %@, highest %@" = "%@, %@, en düşük %@, en yüksek %@";
+/* Temperature page, VoiceOver: state of a sensor group that can be opened and closed */
+"Expanded" = "Açık";
+"Collapsed" = "Kapalı";
+/* Temperature page: shown on Macs whose chip has no sensor list yet; only the card's sensor is listed */
+"Detailed sensors aren't mapped for this Mac yet." = "Bu Mac için ayrıntılı sensörler henüz eşlenmedi.";
+/* Temperature page: shown when no sensor reads at all */
+"macOS did not report any temperature sensors." = "macOS hiçbir sıcaklık sensörü bildirmedi.";
+/* Temperature page: captions under the sensor list */
+"Groups show their hottest sensor now and the range of all their sensors. Min and max are the lowest and highest readings since MacStats started, while this page was open." = "Gruplar şu an en sıcak sensörlerini ve tüm sensörlerinin aralığını gösterir. En az ve en çok, MacStats başladığından beri bu sayfa açıkken alınan en düşük ve en yüksek ölçümlerdir.";
+"Min and max are the lowest and highest readings since MacStats started, while this page was open." = "En az ve en çok, MacStats başladığından beri bu sayfa açıkken alınan en düşük ve en yüksek ölçümlerdir.";

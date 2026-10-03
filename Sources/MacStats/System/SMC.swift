@@ -14,6 +14,7 @@ import IOKit
 ///   `Tp09` `Tp0T` `Tp01` `Tp05` `Tp0D` `Tp0H` `Tg0f` `Tg0j`
 ///           Apple Silicon CPU/SoC die sensors                    (flt, °C)
 ///   `TC0P` `TC0D` `TCAD` Intel-era CPU proximity/die sensors      (sp78, °C)
+///   every key in `TemperatureSensorCatalog`, for the Temperature page (#32)
 final class SMCService: @unchecked Sendable {
 
     static let shared = SMCService()
@@ -164,6 +165,12 @@ final class SMCService: @unchecked Sendable {
         temperatureLock.lock()
         defer { temperatureLock.unlock() }
         return temperatureSelector.read(now: ProcessInfo.processInfo.systemUptime) { readDouble($0) }
+    }
+
+    /// Any temperature key in Celsius, as decoded; nil when the key is missing.
+    /// Plausibility is the caller's call (`isPlausibleTemperature`).
+    func readTemperature(key: String) -> Double? {
+        readDouble(key)
     }
 
     /// The temperature key that is actually being used, once probed.
