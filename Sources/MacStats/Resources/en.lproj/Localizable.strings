@@ -279,3 +279,30 @@
 "The current output device has no output streams." = "The current output device has no output streams.";
 "The current output device has no output channels." = "The current output device has no output channels.";
 "The current output device uses an audio format the mixer does not support." = "The current output device uses an audio format the mixer does not support.";
+
+/* MARK: Detail navigation (#21) */
+/* VoiceOver hint of a popover card */
+"Opens details" = "Opens details";
+/* Tooltip of the detail page's back chevron */
+"Back" = "Back";
+/* VoiceOver label of the detail page's back chevron */
+"Back to all stats" = "Back to all stats";
+/* Detail page title for the RAM card */
+"Memory" = "Memory";
+/* VoiceOver title of the detail page's range picker */
+"Time range" = "Time range";
+/* Range picker segments: one minute, five minutes, fifteen minutes, one hour */
+"1m" = "1m";
+"5m" = "5m";
+"15m" = "15m";
+"1h" = "1h";
+/* Range picker segments as VoiceOver reads them */
+"1 minute" = "1 minute";
+"5 minutes" = "5 minutes";
+"15 minutes" = "15 minutes";
+"1 hour" = "1 hour";
+/* Title of a detail page section the hardware or macOS does not provide */
+"Not available on this Mac" = "Not available on this Mac";
+/* Placeholder shown on a detail page that is not built yet */
+"Details coming soon" = "Details coming soon";
+"Charts and a breakdown of this number will appear here." = "Charts and a breakdown of this number will appear here.";

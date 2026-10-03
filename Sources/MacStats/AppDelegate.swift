@@ -11,6 +11,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// The popover tab last reported by `StatsView`; see `StatsPollingPolicy`.
     private var selectedTab: PopoverTab = .system
+    /// The System tab's grid/detail state; reset to the grid whenever the popover closes.
+    private let detailNavigation = DetailNavigation()
 
     private var statusItem: NSStatusItem?
     /// The title currently drawn in the status item; nil while it shows the icon,
@@ -121,6 +123,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.delegate = self
 
         let statsView = StatsView(
+            navigation: detailNavigation,
             onOpenSettings: { [weak self] in self?.openSettings() },
             onShowMenu: { [weak self] view in self?.showStatusMenu(anchoredTo: view) },
             onSelectTab: { [weak self] tab in
@@ -133,7 +136,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         .environmentObject(appMixer)
 
         let controller = NSHostingController(rootView: statsView)
-        // Let SwiftUI drive the popover size so hidden cards do not leave a gap.
+        // Let SwiftUI drive the popover size so hidden cards do not leave a gap
+        // and a detail page grows it (up to `StatsView.maxPopoverHeight`); the
+        // popover animates each change.
         controller.sizingOptions = [.preferredContentSize]
         popover.contentViewController = controller
         self.popover = popover
@@ -285,6 +290,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 /// when the popover is closed or shows only the Audio tab — but only while the
 /// menu bar shows a static glyph. Live metrics up there force continuous
 /// sampling; that is the cost of the feature.
+///
+/// The System tab means its grid or any detail page (`SystemRoute`): a page is
+/// as visible as the grid, and a page left open behind the Audio tab is not.
 enum StatsPollingPolicy {
     static func shouldPoll(showsMetricsInMenuBar: Bool, popoverShown: Bool, selectedTab: PopoverTab) -> Bool {
         if showsMetricsInMenuBar { return true }
@@ -296,6 +304,8 @@ enum StatsPollingPolicy {
 
 extension AppDelegate: NSPopoverDelegate {
     func popoverDidClose(_ notification: Notification) {
+        // Reopening starts at the grid rather than a page the user has forgotten.
+        detailNavigation.back()
         applyPollingPolicy(popoverShown: false)
     }
 }

@@ -279,3 +279,30 @@
 "The current output device has no output streams." = "Geçerli çıkış aygıtının çıkış akışı yok.";
 "The current output device has no output channels." = "Geçerli çıkış aygıtının çıkış kanalı yok.";
 "The current output device uses an audio format the mixer does not support." = "Geçerli çıkış aygıtı, mikserin desteklemediği bir ses biçimi kullanıyor.";
+
+/* MARK: Detail navigation (#21) */
+/* VoiceOver hint of a popover card */
+"Opens details" = "Ayrıntıları açar";
+/* Tooltip of the detail page's back chevron */
+"Back" = "Geri";
+/* VoiceOver label of the detail page's back chevron */
+"Back to all stats" = "Tüm istatistiklere dön";
+/* Detail page title for the RAM card */
+"Memory" = "Bellek";
+/* VoiceOver title of the detail page's range picker */
+"Time range" = "Zaman aralığı";
+/* Range picker segments: one minute, five minutes, fifteen minutes, one hour */
+"1m" = "1 dk";
+"5m" = "5 dk";
+"15m" = "15 dk";
+"1h" = "1 sa";
+/* Range picker segments as VoiceOver reads them */
+"1 minute" = "1 dakika";
+"5 minutes" = "5 dakika";
+"15 minutes" = "15 dakika";
+"1 hour" = "1 saat";
+/* Title of a detail page section the hardware or macOS does not provide */
+"Not available on this Mac" = "Bu Mac'te kullanılamıyor";
+/* Placeholder shown on a detail page that is not built yet */
+"Details coming soon" = "Ayrıntılar yakında";
+"Charts and a breakdown of this number will appear here." = "Bu değerin grafikleri ve ayrıntılı dökümü burada görünecek.";
