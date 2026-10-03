@@ -12,7 +12,23 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # Present on both macos-15 (arm64) and macos-15-intel images; see
+  # https://github.com/actions/runner-images/tree/main/images/macos
+  XCODE_APP: /Applications/Xcode_16.4.app
+
 jobs:
+  lint:
+    name: ShellCheck
+    # shellcheck is preinstalled on Ubuntu runner images but not on macOS ones.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Run shellcheck
+        run: |
+          shellcheck --version
+          shellcheck Scripts/*.sh Tests/*.sh
+
   test:
     name: Test (${{ matrix.runner }})
     strategy:
@@ -22,7 +38,13 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - name: Check monitoring-only constraints
+      - name: Select Xcode
+        run: |
+          test -d "${XCODE_APP}"
+          sudo xcode-select -s "${XCODE_APP}/Contents/Developer"
+          xcodebuild -version
+          swift --version
+      - name: Check for SMC fan-write paths
         run: bash Scripts/check-monitoring-only.sh
       - name: Validate shell scripts
         run: for script in Scripts/*.sh; do bash -n "$script"; done
@@ -33,16 +55,27 @@ jobs:
 
   package-universal:
     name: Package Universal App
-    needs: test
+    needs: [lint, test]
     runs-on: macos-15
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Select Xcode
+        run: |
+          test -d "${XCODE_APP}"
+          sudo xcode-select -s "${XCODE_APP}/Contents/Developer"
+          xcodebuild -version
+          swift --version
+      - name: Read source version
+        run: |
+          version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Info.plist)"
+          printf 'Source version: %s\n' "${version}"
+          printf 'APP_VERSION=%s\n' "${version}" >> "${GITHUB_ENV}"
       - name: Build Universal app
-        run: APP_VERSION=0.1.0 BUILD_NUMBER="${GITHUB_RUN_NUMBER}" RELEASE_STRICT=1 bash Scripts/build-app.sh
+        run: BUILD_NUMBER="${GITHUB_RUN_NUMBER}" RELEASE_STRICT=1 bash Scripts/build-app.sh
       - name: Verify Universal app
-        run: bash Scripts/verify-app.sh dist/MacStats.app 0.1.0 "${GITHUB_RUN_NUMBER}"
+        run: bash Scripts/verify-app.sh dist/MacStats.app "${APP_VERSION}" "${GITHUB_RUN_NUMBER}"
       - name: Upload Universal app diagnostic
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1 (Node 24)
         with:
           name: MacStats-universal-app
           path: dist/MacStats.app
