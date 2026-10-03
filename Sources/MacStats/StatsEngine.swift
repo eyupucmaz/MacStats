@@ -118,6 +118,23 @@ final class LiveStatsSampler: StatsSampler {
 final class StatsEngine: ObservableObject {
     static let shared = StatsEngine()
 
+    /// What SwiftUI views observe. Declared rather than synthesized so it can be gated
+    /// by `notifiesViews`: a declared publisher is not wired to `@Published` properties,
+    /// so `publish` sends it by hand. Combine subscribers of `$snapshot` (the status
+    /// item) are not affected by the gate.
+    let objectWillChange = ObservableObjectPublisher()
+
+    /// Off while the popover is closed. Its view hierarchy lives for the app's whole
+    /// life, and a closed popover re-rendering its grid on every tick cost about 1 % of
+    /// a core (#35). Switching it back on sends one change so the views catch up.
+    /// Main thread only.
+    var notifiesViews = true {
+        didSet {
+            guard notifiesViews, !oldValue else { return }
+            objectWillChange.send()
+        }
+    }
+
     /// Replaced at most once per tick, and only when a value actually changed.
     @Published private(set) var snapshot = StatsSnapshot()
 
@@ -148,6 +165,15 @@ final class StatsEngine: ObservableObject {
     private static let maxPendingHistory = 64
     /// Stamps each tick's history sample. Injectable for tests.
     private let clock: () -> Date
+
+    /// Page updates waiting for the next tick; see `coalesce`. Main thread only.
+    private var pendingUpdates: [() -> Void] = []
+    /// Applies `pendingUpdates` if no tick comes first. Main thread only.
+    private var fallbackFlush: DispatchWorkItem?
+    /// Longer than one tick at the default 1 s refresh plus timer leeway, so an update
+    /// normally rides along with a tick; short enough that a slower refresh interval
+    /// does not hold a page's own samplers back by more than about a second.
+    static let maximumUpdateDelay: TimeInterval = 1.25
 
     init(sampler: StatsSampler = LiveStatsSampler(), clock: @escaping () -> Date = Date.init) {
         // No sampling until start(); the timer is owned solely by start()/stop().
@@ -239,6 +265,31 @@ final class StatsEngine: ObservableObject {
         source.resume()
     }
 
+    // MARK: - Page updates
+
+    /// Detail pages route their samplers' main-thread deliveries through here so a page
+    /// changes once per tick (#35). `update` runs with the next tick's delivery, in the
+    /// same run loop turn and so in the same SwiftUI update as the engine's own change,
+    /// instead of costing a whole-page update of its own. If no tick arrives within
+    /// `maximumUpdateDelay` (a slow refresh interval, sampling stopped) it runs then.
+    /// Main thread only.
+    func coalesce(_ update: @escaping () -> Void) {
+        pendingUpdates.append(update)
+        guard fallbackFlush == nil else { return }
+        let flush = DispatchWorkItem { [weak self] in self?.flushUpdates() }
+        fallbackFlush = flush
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.maximumUpdateDelay, execute: flush)
+    }
+
+    /// Runs every waiting page update, oldest first. Main thread only.
+    private func flushUpdates() {
+        fallbackFlush?.cancel()
+        fallbackFlush = nil
+        let updates = pendingUpdates
+        pendingUpdates = []
+        updates.forEach { $0() }
+    }
+
     // MARK: - Sampling
 
     /// Takes one sample synchronously, bypassing the timer. For tests.
@@ -281,8 +332,10 @@ final class StatsEngine: ObservableObject {
             let samples = self.pendingHistory
             self.pendingHistory = []
             self.lock.unlock()
+            self.flushUpdates()
             self.history.record(samples)
             if let next, next != self.snapshot {
+                if self.notifiesViews { self.objectWillChange.send() }
                 self.snapshot = next
             }
         }

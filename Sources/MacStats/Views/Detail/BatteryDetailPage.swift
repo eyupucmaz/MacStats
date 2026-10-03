@@ -39,7 +39,7 @@ struct BatteryDetailPage: View {
             }
             modes
         }
-        .onAppear { model.start(history: stats.history) }
+        .onAppear { model.start(engine: stats) }
         .onDisappear { model.stop() }
     }
 
@@ -91,8 +91,10 @@ final class BatteryDetailModel: ObservableObject {
     }
 
     /// Main thread. On a Mac with a battery each reading's power and state go into
-    /// history, so the charts keep what was seen on earlier visits too.
-    func start(history: MetricHistory) {
+    /// history, so the charts keep what was seen on earlier visits too. Readings reach
+    /// the page with the engine's ticks (`StatsEngine.coalesce`).
+    func start(engine: StatsEngine) {
+        let history = engine.history
         isLowPowerModeEnabled = ProcessInfo.processInfo.isLowPowerModeEnabled
         if powerStateObserver == nil {
             powerStateObserver = NotificationCenter.default.addObserver(
@@ -102,10 +104,12 @@ final class BatteryDetailModel: ObservableObject {
             }
         }
         sampler.start { [weak self, weak history] detail in
-            guard let self else { return }
-            if self.detail != detail { self.detail = detail }
-            guard let battery = detail.battery, let history else { return }
-            Self.record(battery, into: history)
+            engine.coalesce {
+                guard let self else { return }
+                if self.detail != detail { self.detail = detail }
+                guard let battery = detail.battery, let history else { return }
+                Self.record(battery, into: history)
+            }
         }
     }
 

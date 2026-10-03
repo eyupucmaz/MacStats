@@ -121,3 +121,26 @@ struct ChartTimeScale: Equatable {
         }
     }
 }
+
+/// Where a chart's (date, value) pairs land in its overlay: linear in both axes,
+/// pinned to the positions the chart's own scales give the ends of each domain, so
+/// shapes drawn with it line up with the axes and marks.
+struct ChartPlotMapping: Equatable {
+    let dates: ClosedRange<Date>
+    let values: ClosedRange<Double>
+    /// x of the first and last date of `dates`.
+    let startX: CGFloat
+    let endX: CGFloat
+    /// y of the lowest and highest value of `values`.
+    let lowY: CGFloat
+    let highY: CGFloat
+
+    func point(date: Date, value: Double) -> CGPoint {
+        let dateSpan = dates.upperBound.timeIntervalSince(dates.lowerBound)
+        let valueSpan = values.upperBound - values.lowerBound
+        let xFraction = dateSpan > 0 ? date.timeIntervalSince(dates.lowerBound) / dateSpan : 0
+        let yFraction = valueSpan > 0 ? (value - values.lowerBound) / valueSpan : 0
+        return CGPoint(x: startX + (endX - startX) * CGFloat(xFraction),
+                       y: lowY + (highY - lowY) * CGFloat(yFraction))
+    }
+}

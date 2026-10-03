@@ -31,7 +31,7 @@ struct FanDetailPage: View {
                 FanListSection(report: report)
             }
         }
-        .onAppear { model.start(history: stats.history) }
+        .onAppear { model.start(engine: stats) }
         .onDisappear { model.stop() }
     }
 }
@@ -58,15 +58,19 @@ final class FanDetailModel: ObservableObject {
 
     /// Follows the refresh rate the user picked, but never slower than every 2 s.
     /// A second fan's speed goes into history so its line keeps earlier visits too.
-    func start(history: MetricHistory) {
+    /// Readings reach the page with the engine's ticks (`StatsEngine.coalesce`).
+    func start(engine: StatsEngine) {
         let interval = min(AppSettings.shared.updateInterval, 2)
+        let history = engine.history
         sampler.start(interval: interval) { [weak self, weak history] report in
-            guard let self else { return }
-            if report != self.report { self.report = report }
-            guard let history, let second = report.fans.first(where: { $0.index == 1 }),
-                  let rpm = second.current else { return }
-            history.register(FanDetailPresentation.secondFanSeries, unit: .rpm, interval: interval)
-            history.record(Double(rpm), for: FanDetailPresentation.secondFanSeries, unit: .rpm)
+            engine.coalesce {
+                guard let self else { return }
+                if report != self.report { self.report = report }
+                guard let history, let second = report.fans.first(where: { $0.index == 1 }),
+                      let rpm = second.current else { return }
+                history.register(FanDetailPresentation.secondFanSeries, unit: .rpm, interval: interval)
+                history.record(Double(rpm), for: FanDetailPresentation.secondFanSeries, unit: .rpm)
+            }
         }
     }
 
@@ -210,15 +214,12 @@ private struct FanView: View {
             if let fraction = fan.fractionOfMaximum,
                let share = FanDetailPresentation.shareOfMaximum(fan, locale: locale) {
                 HStack(spacing: 8) {
-                    GeometryReader { geometry in
-                        Capsule()
-                            .fill(ChartPalette.color(fan.index))
-                            .frame(width: geometry.size.width * fraction)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(.quaternary, in: Capsule())
-                    }
-                    .frame(height: 6)
-                    .animation(.easeOut(duration: 0.2), value: fraction)
+                    // Core Animation eases the fill; a SwiftUI animation here redrew the
+                    // whole page on every frame (#35).
+                    let fill = AnimatedBar.Segment(fraction: fraction, color: ChartPalette.nsColor(fan.index))
+                    AnimatedBar(direction: .forward, segments: [fill], roundsFills: true)
+                        .background(.quaternary, in: Capsule())
+                        .frame(height: 6)
                     Text(share.text)
                         .font(.caption)
                         .foregroundStyle(.secondary)

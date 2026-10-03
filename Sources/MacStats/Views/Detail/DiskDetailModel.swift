@@ -44,18 +44,21 @@ final class DiskDetailModel: ObservableObject {
         observers.forEach(NSWorkspace.shared.notificationCenter.removeObserver)
     }
 
-    func start(history: MetricHistory) {
+    /// Activity and process readings reach the page with the engine's ticks
+    /// (`StatsEngine.coalesce`).
+    func start(engine: StatsEngine) {
         guard volumeTimer == nil else { return }
         generation += 1
+        let history = engine.history
         self.history = history
         history.register(Self.readSeries, unit: .bytesPerSecond, interval: Self.activityInterval)
         history.register(Self.writeSeries, unit: .bytesPerSecond, interval: Self.activityInterval)
 
         activitySampler.start(interval: Self.activityInterval) { [weak self] report in
-            self?.receive(report)
+            engine.coalesce { self?.receive(report) }
         }
         processSampler.start(interval: Self.processInterval) { [weak self] report in
-            self?.processes = report
+            engine.coalesce { self?.processes = report }
         }
 
         let token = generation

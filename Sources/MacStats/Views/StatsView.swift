@@ -1,8 +1,10 @@
 import AppKit
 import SwiftUI
 
+/// Does not observe `StatsEngine` itself: only the card grid and the detail pages do,
+/// so a tick re-renders the numbers, not the header, tab picker and frame around
+/// them (#35).
 struct StatsView: View {
-    @EnvironmentObject var stats: StatsEngine
     @ObservedObject private var settings = AppSettings.shared
     @ObservedObject private var onboarding = Onboarding.shared
     @ObservedObject var navigation: DetailNavigation
@@ -85,28 +87,16 @@ struct StatsView: View {
     @ViewBuilder
     private var grid: some View {
         if settings.hasVisibleCards {
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                ForEach(cards) { card in
-                    if let metric = card.metric {
-                        Button { open(metric) } label: {
-                            StatCard(card: card, isFocused: focusedCard == metric)
-                        }
-                        .buttonStyle(StatCardButtonStyle())
-                        .focused($focusedCard, equals: metric)
-                        .accessibilityLabel(card.accessibility)
-                        .accessibilityHint(L10n.string("Opens details"))
-                    }
+            StatCardGrid(settings: settings, focusedCard: $focusedCard, open: open)
+                .padding(.bottom, 8)
+                // Space presses a focused button; this lets Return open it too.
+                .background {
+                    Button("") { focusedCard.map(open) }
+                        .keyboardShortcut(.defaultAction)
+                        .disabled(focusedCard == nil)
+                        .hidden()
+                        .accessibilityHidden(true)
                 }
-            }
-            .padding(.bottom, 8)
-            // Space presses a focused button; this lets Return open it too.
-            .background {
-                Button("") { focusedCard.map(open) }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(focusedCard == nil)
-                    .hidden()
-                    .accessibilityHidden(true)
-            }
         } else {
             Text(L10n.string("All stats are hidden. Enable some in Settings."))
                 .font(.caption)
@@ -139,11 +129,29 @@ struct StatsView: View {
                 .accessibilityLabel(L10n.string("More actions"))
         }
     }
+}
 
-    // MARK: - Cards
+/// The cards, the one part of the grid view that changes on every tick.
+private struct StatCardGrid: View {
+    @EnvironmentObject private var stats: StatsEngine
+    @ObservedObject var settings: AppSettings
+    var focusedCard: FocusState<MenuBarMetric?>.Binding
+    let open: (MenuBarMetric) -> Void
 
-    private var cards: [StatCardModel] {
-        StatCardFactory.cards(stats.snapshot, settings: settings)
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+            ForEach(StatCardFactory.cards(stats.snapshot, settings: settings)) { card in
+                if let metric = card.metric {
+                    Button { open(metric) } label: {
+                        StatCard(card: card, isFocused: focusedCard.wrappedValue == metric)
+                    }
+                    .buttonStyle(StatCardButtonStyle())
+                    .focused(focusedCard, equals: metric)
+                    .accessibilityLabel(card.accessibility)
+                    .accessibilityHint(L10n.string("Opens details"))
+                }
+            }
+        }
     }
 }
 

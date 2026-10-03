@@ -23,7 +23,7 @@ struct NetworkDetailPage: View {
                 }
             }
         }
-        .onAppear { model.start() }
+        .onAppear { model.start(engine: stats) }
         .onDisappear { model.stop() }
     }
 }
@@ -34,10 +34,13 @@ final class NetworkDetailModel: ObservableObject {
     @Published private(set) var report: NetworkDetailReport?
     private let sampler = NetworkDetailSampler()
 
-    func start() {
+    /// Reports reach the page with the engine's ticks (`StatsEngine.coalesce`).
+    func start(engine: StatsEngine) {
         sampler.start { [weak self] report in
-            guard let self, self.report != report else { return }
-            self.report = report
+            engine.coalesce {
+                guard let self, self.report != report else { return }
+                self.report = report
+            }
         }
     }
 

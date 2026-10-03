@@ -23,7 +23,7 @@ struct DiskDetailPage: View {
                 }
             }
         }
-        .onAppear { model.start(history: stats.history) }
+        .onAppear { model.start(engine: stats) }
         .onDisappear { model.stop() }
     }
 
