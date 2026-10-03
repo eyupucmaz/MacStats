@@ -90,20 +90,113 @@ final class AudioDeviceServiceTests: XCTestCase {
         hardware.onRead = { if hardware.readCount == 2 { refreshed.fulfill() } }
 
         hardware.state.defaultOutputID = 9
-        hardware.emitObservedChange()
+        hardware.emitObservedChange(.devices)
 
         wait(for: [refreshed], timeout: 1)
         XCTAssertEqual(service.state.defaultOutputID, 9)
     }
 
+    /// Catches issue #6: volume keys and Control Center changes left the slider
+    /// and mute toggle stale.
+    func testObservedOutputControlChangeUpdatesVolumeAndMuteWithoutReenumerating() {
+        let hardware = FakeAudioHardware(state: Self.speakersState(volume: 0.8, muted: false))
+        let service = AudioDeviceService(hardware: hardware)
+        let updated = expectation(description: "controls read after an outside change")
+        hardware.onControlsRead = { updated.fulfill() }
+
+        hardware.state.outputVolume = 0.35
+        hardware.state.outputMuted = true
+        hardware.emitObservedChange(.outputControls)
+
+        wait(for: [updated], timeout: 1)
+        XCTAssertEqual(service.state.outputVolume, 0.35)
+        XCTAssertEqual(service.state.outputMuted, true)
+        XCTAssertEqual(hardware.readCount, 1, "a control change must not re-enumerate devices")
+    }
+
+    /// Catches a regression where every slider tick re-enumerated all devices.
+    func testVolumeAndMuteWritesReadBackOnlyTheOutputControls() {
+        let hardware = FakeAudioHardware(state: Self.speakersState(volume: 0.8, muted: false))
+        let service = AudioDeviceService(hardware: hardware)
+
+        service.setOutputVolume(0.3)
+        service.setOutputVolume(0.4)
+        service.setOutputMuted(true)
+
+        XCTAssertEqual(service.state.outputVolume, 0.4)
+        XCTAssertEqual(service.state.outputMuted, true)
+        XCTAssertEqual(hardware.readCount, 1)
+        XCTAssertEqual(hardware.controlsReadCount, 3)
+        XCTAssertEqual(hardware.controlsReadDeviceIDs, [2, 2, 2])
+    }
+
+    /// Catches a regression where a transient read failure stayed on screen forever.
+    func testSuccessfulRefreshClearsAnEarlierReadError() {
+        let hardware = FakeAudioHardware(state: Self.speakersState(volume: 0.8, muted: false))
+        hardware.readError = .osStatus(-1)
+        let service = AudioDeviceService(hardware: hardware)
+        XCTAssertNotNil(service.errorMessage)
+
+        hardware.readError = nil
+        service.refresh()
+
+        XCTAssertNil(service.errorMessage)
+        XCTAssertEqual(service.state.defaultOutputID, 2)
+    }
+
+    /// The read-back after a refused write must not hide why the write failed.
+    func testFailedWriteKeepsItsErrorAfterTheReadBack() {
+        let hardware = FakeAudioHardware(
+            state: Self.speakersState(volume: 0.8, muted: false),
+            writeError: .unwritableControl("The selected device does not allow this audio control to change.")
+        )
+        let service = AudioDeviceService(hardware: hardware)
+
+        service.setOutputMuted(true)
+
+        XCTAssertEqual(service.errorMessage,
+                       "The selected device does not allow this audio control to change.")
+        XCTAssertEqual(service.state.outputMuted, false)
+    }
+
+    /// An outside change after a refused write shows the device's real state again.
+    func testObservedChangeAfterAFailedWriteClearsTheError() {
+        let hardware = FakeAudioHardware(
+            state: Self.speakersState(volume: 0.8, muted: false),
+            writeError: .unsupportedControl("No mute here.")
+        )
+        let service = AudioDeviceService(hardware: hardware)
+        service.setOutputMuted(true)
+        XCTAssertEqual(service.errorMessage, "No mute here.")
+        let updated = expectation(description: "controls read after an outside change")
+        hardware.onControlsRead = { updated.fulfill() }
+
+        hardware.state.outputVolume = 0.5
+        hardware.emitObservedChange(.outputControls)
+
+        wait(for: [updated], timeout: 1)
+        XCTAssertEqual(service.state.outputVolume, 0.5)
+        XCTAssertNil(service.errorMessage)
+    }
+
+    private static func speakersState(volume: Float, muted: Bool) -> AudioDeviceState {
+        let speakers = AudioDevice(id: 2, name: "MacBook Speakers", directions: [.output],
+                                   supportsVolume: true, supportsMute: true)
+        return AudioDeviceState(devices: [speakers], defaultInputID: nil, defaultOutputID: 2,
+                                outputVolume: volume, outputMuted: muted, outputControlMessage: nil)
+    }
 }
 
 private final class FakeAudioHardware: AudioHardwareClient {
     var state: AudioDeviceState
     let writeError: AudioControlError?
+    var readError: AudioControlError?
     var onRead: (() -> Void)?
+    var onControlsRead: (() -> Void)?
     private(set) var readCount = 0
-    private var observationHandler: (() -> Void)?
+    private(set) var controlsReadCount = 0
+    private(set) var controlsReadDeviceIDs: [AudioObjectID] = []
+    private var observationHandler: ((AudioHardwareChange) -> Void)?
 
     init(state: AudioDeviceState, writeError: AudioControlError? = nil) {
         self.state = state
@@ -113,10 +206,19 @@ private final class FakeAudioHardware: AudioHardwareClient {
     func readDeviceState() throws -> AudioDeviceState {
         readCount += 1
         onRead?()
+        if let readError { throw readError }
         return state
     }
 
-    func emitObservedChange() { observationHandler?() }
+    func readOutputControls(deviceID: AudioObjectID) throws -> AudioOutputControls {
+        controlsReadCount += 1
+        controlsReadDeviceIDs.append(deviceID)
+        onControlsRead?()
+        if let readError { throw readError }
+        return state.outputControls
+    }
+
+    func emitObservedChange(_ change: AudioHardwareChange) { observationHandler?(change) }
 
     func setDefaultDevice(_ id: AudioObjectID, direction: AudioDirection) throws {
         if let writeError { throw writeError }
@@ -136,6 +238,6 @@ private final class FakeAudioHardware: AudioHardwareClient {
         state.outputMuted = muted
     }
 
-    func startObserving(_ handler: @escaping () -> Void) { observationHandler = handler }
+    func startObserving(_ handler: @escaping (AudioHardwareChange) -> Void) { observationHandler = handler }
     func stopObserving() { observationHandler = nil }
 }

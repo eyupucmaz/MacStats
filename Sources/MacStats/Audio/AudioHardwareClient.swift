@@ -18,19 +18,155 @@ enum AudioControlError: Error, Equatable {
 
 protocol AudioHardwareClient: AnyObject {
     func readDeviceState() throws -> AudioDeviceState
+    /// Reads only the volume and mute of one output device, without enumerating devices.
+    func readOutputControls(deviceID: AudioObjectID) throws -> AudioOutputControls
     func setDefaultDevice(_ id: AudioObjectID, direction: AudioDirection) throws
     func setOutputVolume(_ value: Float, deviceID: AudioObjectID) throws
     func setOutputMuted(_ muted: Bool, deviceID: AudioObjectID) throws
-    func startObserving(_ handler: @escaping () -> Void)
+    func startObserving(_ handler: @escaping (AudioHardwareChange) -> Void)
     func stopObserving()
+}
+
+/// Element-level Core Audio property access. Kept behind a protocol so the
+/// main-element / per-channel fallback can be exercised without hardware.
+protocol AudioPropertyAccess {
+    func hasProperty(_ address: AudioObjectPropertyAddress, objectID: AudioObjectID) -> Bool
+    func isSettable(_ address: AudioObjectPropertyAddress, objectID: AudioObjectID) -> Bool
+    func readFloat(_ address: AudioObjectPropertyAddress, objectID: AudioObjectID) throws -> Float
+    func readFlag(_ address: AudioObjectPropertyAddress, objectID: AudioObjectID) throws -> Bool
+    func writeFloat(_ value: Float, _ address: AudioObjectPropertyAddress, objectID: AudioObjectID) throws
+    func writeFlag(_ value: Bool, _ address: AudioObjectPropertyAddress, objectID: AudioObjectID) throws
+    /// The device's preferred stereo pair, or nil when it does not report one.
+    func preferredStereoChannels(objectID: AudioObjectID) -> [AudioObjectPropertyElement]?
+}
+
+/// Where a device exposes one output control. Many USB and Bluetooth devices
+/// have no main-element volume or mute and expose them per channel instead.
+struct AudioOutputControlElements: Equatable {
+    let elements: [AudioObjectPropertyElement]
+    let isSettable: Bool
+}
+
+/// Reads and writes output volume and mute on the main element when it is
+/// settable, otherwise on the device's stereo channels.
+struct AudioOutputControlDriver {
+    static let fallbackStereoChannels: [AudioObjectPropertyElement] = [1, 2]
+
+    let properties: AudioPropertyAccess
+
+    func elements(for selector: AudioObjectPropertySelector, deviceID: AudioObjectID) -> AudioOutputControlElements? {
+        let groups = [[kAudioObjectPropertyElementMain], channels(deviceID)]
+        for group in groups {
+            let settable = group.filter { properties.isSettable(Self.address(selector, $0), objectID: deviceID) }
+            if !settable.isEmpty { return AudioOutputControlElements(elements: settable, isSettable: true) }
+        }
+        // A read-only control is still worth showing.
+        for group in groups {
+            let readable = group.filter { properties.hasProperty(Self.address(selector, $0), objectID: deviceID) }
+            if !readable.isEmpty { return AudioOutputControlElements(elements: readable, isSettable: false) }
+        }
+        return nil
+    }
+
+    /// Every element that may carry volume or mute, for change listeners.
+    func observableAddresses(deviceID: AudioObjectID) -> [AudioObjectPropertyAddress] {
+        let elements = [kAudioObjectPropertyElementMain] + channels(deviceID)
+        return [kAudioDevicePropertyVolumeScalar, kAudioDevicePropertyMute].flatMap { selector in
+            elements.map { Self.address(selector, $0) }
+                .filter { properties.hasProperty($0, objectID: deviceID) }
+        }
+    }
+
+    func readControls(deviceID: AudioObjectID) throws -> AudioOutputControls {
+        AudioOutputControls(volume: try readVolume(deviceID: deviceID),
+                            muted: try readMuted(deviceID: deviceID))
+    }
+
+    /// Per-channel devices report the loudest channel, as the system volume does.
+    func readVolume(deviceID: AudioObjectID) throws -> Float? {
+        guard let control = elements(for: kAudioDevicePropertyVolumeScalar, deviceID: deviceID) else { return nil }
+        return try channelVolumes(control, deviceID: deviceID).max()
+    }
+
+    /// Per-channel devices count as muted only when every channel is muted.
+    func readMuted(deviceID: AudioObjectID) throws -> Bool? {
+        guard let control = elements(for: kAudioDevicePropertyMute, deviceID: deviceID) else { return nil }
+        return try control.elements.allSatisfy {
+            try properties.readFlag(Self.address(kAudioDevicePropertyMute, $0), objectID: deviceID)
+        }
+    }
+
+    /// Per-channel devices keep their balance: the loudest channel moves to
+    /// `value` and the others are scaled with it.
+    func setVolume(_ value: Float, deviceID: AudioObjectID) throws {
+        let control = try settableElements(for: kAudioDevicePropertyVolumeScalar, deviceID: deviceID)
+        let current = control.elements.count > 1 ? try channelVolumes(control, deviceID: deviceID) : []
+        let loudest = current.max() ?? 0
+        for (index, element) in control.elements.enumerated() {
+            let target = loudest > 0 ? current[index] / loudest * value : value
+            try properties.writeFloat(min(max(target, 0), 1),
+                                      Self.address(kAudioDevicePropertyVolumeScalar, element), objectID: deviceID)
+        }
+    }
+
+    func setMuted(_ muted: Bool, deviceID: AudioObjectID) throws {
+        let control = try settableElements(for: kAudioDevicePropertyMute, deviceID: deviceID)
+        for element in control.elements {
+            try properties.writeFlag(muted, Self.address(kAudioDevicePropertyMute, element), objectID: deviceID)
+        }
+    }
+
+    static func address(_ selector: AudioObjectPropertySelector,
+                        _ element: AudioObjectPropertyElement) -> AudioObjectPropertyAddress {
+        AudioObjectPropertyAddress(mSelector: selector, mScope: kAudioDevicePropertyScopeOutput, mElement: element)
+    }
+
+    private func channels(_ deviceID: AudioObjectID) -> [AudioObjectPropertyElement] {
+        let preferred = properties.preferredStereoChannels(objectID: deviceID)?
+            .filter { $0 != kAudioObjectPropertyElementMain }
+        guard let preferred, !preferred.isEmpty else { return Self.fallbackStereoChannels }
+        return preferred
+    }
+
+    private func channelVolumes(_ control: AudioOutputControlElements, deviceID: AudioObjectID) throws -> [Float] {
+        try control.elements.map {
+            try properties.readFloat(Self.address(kAudioDevicePropertyVolumeScalar, $0), objectID: deviceID)
+        }
+    }
+
+    private func settableElements(for selector: AudioObjectPropertySelector,
+                                  deviceID: AudioObjectID) throws -> AudioOutputControlElements {
+        guard let control = elements(for: selector, deviceID: deviceID) else {
+            throw AudioControlError.unsupportedControl("The selected device does not expose this audio control.")
+        }
+        guard control.isSettable else {
+            throw AudioControlError.unwritableControl("The selected device does not allow this audio control to change.")
+        }
+        return control
+    }
 }
 
 /// Thin Core Audio adapter. It contains C-property details so the observable
 /// service and SwiftUI can be exercised with a fake instead of physical audio
 /// hardware.
 final class SystemAudioHardwareClient: AudioHardwareClient {
+    private struct Listener {
+        let objectID: AudioObjectID
+        let address: AudioObjectPropertyAddress
+        let block: AudioObjectPropertyListenerBlock
+    }
+
     private let observationQueue = DispatchQueue(label: "com.macstats.audio-observation")
-    private var observers: [(address: AudioObjectPropertyAddress, block: AudioObjectPropertyListenerBlock)] = []
+    private let controls = AudioOutputControlDriver(properties: CoreAudioPropertyAccess())
+    // Listener bookkeeping is only touched on the main thread: Core Audio
+    // delivers on `observationQueue` and each listener block hops to main.
+    private var changeHandler: ((AudioHardwareChange) -> Void)?
+    private var systemListeners: [Listener] = []
+    private var outputListeners: [Listener] = []
+
+    deinit {
+        stopObserving()
+    }
 
     func readDeviceState() throws -> AudioDeviceState {
         let inputID = try defaultDeviceID(for: .input)
@@ -45,19 +181,22 @@ final class SystemAudioHardwareClient: AudioHardwareClient {
         }
 
         let output = devices.first { $0.id == outputID }
-        let volume = try readOptionalFloat(deviceID: outputID, selector: kAudioDevicePropertyVolumeScalar)
-        let muted = try readOptionalBool(deviceID: outputID, selector: kAudioDevicePropertyMute)
+        let current = try readOutputControls(deviceID: outputID)
         let message: String?
         if output?.supportsVolume != true {
-            message = "\(output?.name ?? "The selected device") does not expose a master volume control."
+            message = "\(output?.name ?? "The selected device") does not expose an adjustable volume control."
         } else if output?.supportsMute != true {
-            message = "\(output?.name ?? "The selected device") does not expose a master mute control."
+            message = "\(output?.name ?? "The selected device") does not expose an adjustable mute control."
         } else {
             message = nil
         }
         return AudioDeviceState(devices: devices, defaultInputID: inputID,
-                                defaultOutputID: outputID, outputVolume: volume,
-                                outputMuted: muted, outputControlMessage: message)
+                                defaultOutputID: outputID, outputVolume: current.volume,
+                                outputMuted: current.muted, outputControlMessage: message)
+    }
+
+    func readOutputControls(deviceID: AudioObjectID) throws -> AudioOutputControls {
+        try controls.readControls(deviceID: deviceID)
     }
 
     func setDefaultDevice(_ id: AudioObjectID, direction: AudioDirection) throws {
@@ -72,17 +211,16 @@ final class SystemAudioHardwareClient: AudioHardwareClient {
     }
 
     func setOutputVolume(_ value: Float, deviceID: AudioObjectID) throws {
-        var value = value
-        try write(&value, deviceID: deviceID, selector: kAudioDevicePropertyVolumeScalar)
+        try controls.setVolume(value, deviceID: deviceID)
     }
 
     func setOutputMuted(_ muted: Bool, deviceID: AudioObjectID) throws {
-        var value: UInt32 = muted ? 1 : 0
-        try write(&value, deviceID: deviceID, selector: kAudioDevicePropertyMute)
+        try controls.setMuted(muted, deviceID: deviceID)
     }
 
-    func startObserving(_ handler: @escaping () -> Void) {
+    func startObserving(_ handler: @escaping (AudioHardwareChange) -> Void) {
         stopObserving()
+        changeHandler = handler
 
         let selectors: [AudioObjectPropertySelector] = [
             kAudioHardwarePropertyDevices,
@@ -90,27 +228,61 @@ final class SystemAudioHardwareClient: AudioHardwareClient {
             kAudioHardwarePropertyDefaultOutputDevice
         ]
         for selector in selectors {
-            var address = AudioObjectPropertyAddress(
+            let address = AudioObjectPropertyAddress(
                 mSelector: selector,
                 mScope: kAudioObjectPropertyScopeGlobal,
                 mElement: kAudioObjectPropertyElementMain
             )
-            let block: AudioObjectPropertyListenerBlock = { _, _ in handler() }
-            guard AudioObjectAddPropertyListenerBlock(
-                AudioObjectID(kAudioObjectSystemObject), &address, observationQueue, block
-            ) == noErr else { continue }
-            observers.append((address, block))
+            if let listener = addListener(objectID: AudioObjectID(kAudioObjectSystemObject),
+                                          address: address, change: .devices) {
+                systemListeners.append(listener)
+            }
         }
+        observeDefaultOutputControls()
     }
 
     func stopObserving() {
-        for observer in observers {
-            var address = observer.address
-            AudioObjectRemovePropertyListenerBlock(
-                AudioObjectID(kAudioObjectSystemObject), &address, observationQueue, observer.block
-            )
+        changeHandler = nil
+        removeListeners(systemListeners + outputListeners)
+        systemListeners.removeAll()
+        outputListeners.removeAll()
+    }
+
+    /// Moves the volume and mute listeners to whichever device is now the
+    /// default output, so volume keys and Control Center stay in sync.
+    private func observeDefaultOutputControls() {
+        removeListeners(outputListeners)
+        outputListeners.removeAll()
+        guard changeHandler != nil, let outputID = try? defaultDeviceID(for: .output) else { return }
+        outputListeners = controls.observableAddresses(deviceID: outputID).compactMap {
+            addListener(objectID: outputID, address: $0, change: .outputControls)
         }
-        observers.removeAll()
+    }
+
+    private func deliver(_ change: AudioHardwareChange) {
+        guard let changeHandler else { return }
+        // The default output, or the controls it exposes, may change with the device list.
+        if change == .devices { observeDefaultOutputControls() }
+        changeHandler(change)
+    }
+
+    private func addListener(objectID: AudioObjectID, address: AudioObjectPropertyAddress,
+                             change: AudioHardwareChange) -> Listener? {
+        var address = address
+        let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
+            DispatchQueue.main.async { self?.deliver(change) }
+        }
+        guard AudioObjectAddPropertyListenerBlock(objectID, &address, observationQueue, block) == noErr else {
+            return nil
+        }
+        return Listener(objectID: objectID, address: address, block: block)
+    }
+
+    private func removeListeners(_ listeners: [Listener]) {
+        for listener in listeners {
+            var address = listener.address
+            AudioObjectRemovePropertyListenerBlock(listener.objectID, &address, observationQueue, listener.block)
+        }
     }
 
     private func deviceIDs() throws -> [AudioObjectID] {
@@ -142,10 +314,15 @@ final class SystemAudioHardwareClient: AudioHardwareClient {
             outputChannelCount: streamChannelCount(for: id, scope: kAudioDevicePropertyScopeOutput)
         )
         guard !directions.isEmpty else { return nil }
+        let isOutput = directions.contains(.output)
         return AudioDevice(id: id, name: deviceName(id),
                            directions: directions,
-                           supportsVolume: directions.contains(.output) && hasWritableProperty(id, selector: kAudioDevicePropertyVolumeScalar),
-                           supportsMute: directions.contains(.output) && hasWritableProperty(id, selector: kAudioDevicePropertyMute))
+                           supportsVolume: isOutput && isSettable(kAudioDevicePropertyVolumeScalar, deviceID: id),
+                           supportsMute: isOutput && isSettable(kAudioDevicePropertyMute, deviceID: id))
+    }
+
+    private func isSettable(_ selector: AudioObjectPropertySelector, deviceID: AudioObjectID) -> Bool {
+        controls.elements(for: selector, deviceID: deviceID)?.isSettable == true
     }
 
     private func streamChannelCount(for id: AudioObjectID, scope: AudioObjectPropertyScope) -> UInt32 {
@@ -179,54 +356,69 @@ final class SystemAudioHardwareClient: AudioHardwareClient {
         return value.takeRetainedValue() as String
     }
 
-    private func readOptionalFloat(deviceID: AudioObjectID, selector: AudioObjectPropertySelector) throws -> Float? {
-        guard hasProperty(deviceID, selector: selector, scope: kAudioDevicePropertyScopeOutput) else { return nil }
+    private func check(_ status: OSStatus) throws {
+        guard status == noErr else { throw AudioControlError.osStatus(status) }
+    }
+}
+
+/// `AudioPropertyAccess` backed by the Core Audio HAL.
+struct CoreAudioPropertyAccess: AudioPropertyAccess {
+    func hasProperty(_ address: AudioObjectPropertyAddress, objectID: AudioObjectID) -> Bool {
+        var address = address
+        return AudioObjectHasProperty(objectID, &address)
+    }
+
+    func isSettable(_ address: AudioObjectPropertyAddress, objectID: AudioObjectID) -> Bool {
+        guard hasProperty(address, objectID: objectID) else { return false }
+        var address = address
+        var writable: DarwinBoolean = false
+        return AudioObjectIsPropertySettable(objectID, &address, &writable) == noErr && writable.boolValue
+    }
+
+    func readFloat(_ address: AudioObjectPropertyAddress, objectID: AudioObjectID) throws -> Float {
         var value: Float = 0
-        var byteCount = UInt32(MemoryLayout<Float>.size)
-        var address = outputAddress(selector)
-        try check(AudioObjectGetPropertyData(deviceID, &address, 0, nil, &byteCount, &value))
+        try read(&value, address, objectID: objectID)
         return value
     }
 
-    private func readOptionalBool(deviceID: AudioObjectID, selector: AudioObjectPropertySelector) throws -> Bool? {
-        guard hasProperty(deviceID, selector: selector, scope: kAudioDevicePropertyScopeOutput) else { return nil }
+    func readFlag(_ address: AudioObjectPropertyAddress, objectID: AudioObjectID) throws -> Bool {
         var value: UInt32 = 0
-        var byteCount = UInt32(MemoryLayout<UInt32>.size)
-        var address = outputAddress(selector)
-        try check(AudioObjectGetPropertyData(deviceID, &address, 0, nil, &byteCount, &value))
+        try read(&value, address, objectID: objectID)
         return value != 0
     }
 
-    private func write<T>(_ value: UnsafeMutablePointer<T>, deviceID: AudioObjectID,
-                          selector: AudioObjectPropertySelector) throws {
-        var address = outputAddress(selector)
-        guard AudioObjectHasProperty(deviceID, &address) else {
-            throw AudioControlError.unsupportedControl("The selected device does not expose this audio control.")
-        }
-        var writable: DarwinBoolean = false
-        try check(AudioObjectIsPropertySettable(deviceID, &address, &writable))
-        guard writable.boolValue else { throw AudioControlError.unwritableControl("The selected device does not allow this audio control to change.") }
-        try check(AudioObjectSetPropertyData(deviceID, &address, 0, nil,
-                                             UInt32(MemoryLayout<T>.size), value))
+    func writeFloat(_ value: Float, _ address: AudioObjectPropertyAddress, objectID: AudioObjectID) throws {
+        var value = value
+        try write(&value, address, objectID: objectID)
     }
 
-    private func outputAddress(_ selector: AudioObjectPropertySelector) -> AudioObjectPropertyAddress {
-        AudioObjectPropertyAddress(mSelector: selector, mScope: kAudioDevicePropertyScopeOutput,
-                                   mElement: kAudioObjectPropertyElementMain)
+    func writeFlag(_ value: Bool, _ address: AudioObjectPropertyAddress, objectID: AudioObjectID) throws {
+        var value: UInt32 = value ? 1 : 0
+        try write(&value, address, objectID: objectID)
     }
 
-    private func hasProperty(_ id: AudioObjectID, selector: AudioObjectPropertySelector,
-                             scope: AudioObjectPropertyScope) -> Bool {
-        var address = AudioObjectPropertyAddress(mSelector: selector, mScope: scope,
+    func preferredStereoChannels(objectID: AudioObjectID) -> [AudioObjectPropertyElement]? {
+        var address = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyPreferredChannelsForStereo,
+                                                 mScope: kAudioDevicePropertyScopeOutput,
                                                  mElement: kAudioObjectPropertyElementMain)
-        return AudioObjectHasProperty(id, &address)
+        guard AudioObjectHasProperty(objectID, &address) else { return nil }
+        var channels: (UInt32, UInt32) = (0, 0)
+        var byteCount = UInt32(MemoryLayout<(UInt32, UInt32)>.size)
+        guard AudioObjectGetPropertyData(objectID, &address, 0, nil, &byteCount, &channels) == noErr else { return nil }
+        return [channels.0, channels.1]
     }
 
-    private func hasWritableProperty(_ id: AudioObjectID, selector: AudioObjectPropertySelector) -> Bool {
-        var address = outputAddress(selector)
-        guard AudioObjectHasProperty(id, &address) else { return false }
-        var writable: DarwinBoolean = false
-        return AudioObjectIsPropertySettable(id, &address, &writable) == noErr && writable.boolValue
+    private func read<T>(_ value: UnsafeMutablePointer<T>, _ address: AudioObjectPropertyAddress,
+                         objectID: AudioObjectID) throws {
+        var address = address
+        var byteCount = UInt32(MemoryLayout<T>.size)
+        try check(AudioObjectGetPropertyData(objectID, &address, 0, nil, &byteCount, value))
+    }
+
+    private func write<T>(_ value: UnsafeMutablePointer<T>, _ address: AudioObjectPropertyAddress,
+                          objectID: AudioObjectID) throws {
+        var address = address
+        try check(AudioObjectSetPropertyData(objectID, &address, 0, nil, UInt32(MemoryLayout<T>.size), value))
     }
 
     private func check(_ status: OSStatus) throws {
