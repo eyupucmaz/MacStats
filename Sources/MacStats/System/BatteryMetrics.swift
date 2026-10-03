@@ -31,31 +31,11 @@ final class BatteryMetrics {
         }
 
         for source in sources {
-            guard let description = IOPSGetPowerSourceDescription(blob, source)?.takeUnretainedValue() as? [String: Any] else { continue }
-            guard let current = (description[kIOPSCurrentCapacityKey] as? NSNumber)?.doubleValue,
-                  let capacity = (description[kIOPSMaxCapacityKey] as? NSNumber)?.doubleValue, capacity > 0 else { continue }
-
-            let level = Int((current / capacity * 100).rounded())
-            let isCharging = (description[kIOPSIsChargingKey] as? Bool) ?? false
-            let isCharged = (description[kIOPSIsChargedKey] as? Bool) ?? false
-            let powerState = description[kIOPSPowerSourceStateKey] as? String
-
-            let state: String
-            if isCharging {
-                state = "Charging"
-            } else if isCharged {
-                state = "Full"
-            } else if powerState == kIOPSACPowerValue {
-                state = "AC Power"
-            } else if powerState == kIOPSBatteryPowerValue {
-                state = "Discharging"
-            } else {
-                state = "Unknown"
-            }
-
-            return BatterySample(level: min(max(level, 0), 100),
-                                 state: state,
-                                 isCharging: isCharging,
+            guard let description = IOPSGetPowerSourceDescription(blob, source)?.takeUnretainedValue() as? [String: Any],
+                  let reading = Self.reading(from: description) else { continue }
+            return BatterySample(level: reading.level,
+                                 state: reading.state,
+                                 isCharging: reading.isCharging,
                                  health: cachedHealth,
                                  cycleCount: cachedCycles)
         }
@@ -85,11 +65,42 @@ final class BatteryMetrics {
         let current = intProperty(service, "NominalChargeCapacity")
             ?? intProperty(service, "AppleRawMaxCapacity")
             ?? 0
-        if design > 0 && current > 0 {
-            cachedHealth = min(Int((Double(current) / Double(design) * 100).rounded()), 100)
+        cachedHealth = Self.health(currentCapacity: current, designCapacity: design)
+    }
+
+    /// Level, state and charging flag from an IOPS power-source description; nil when it
+    /// carries no usable capacity (not a battery).
+    static func reading(from description: [String: Any]) -> (level: Int, state: String, isCharging: Bool)? {
+        guard let current = (description[kIOPSCurrentCapacityKey] as? NSNumber)?.doubleValue,
+              let capacity = (description[kIOPSMaxCapacityKey] as? NSNumber)?.doubleValue, capacity > 0 else { return nil }
+
+        let level = Int((current / capacity * 100).rounded())
+        let isCharging = (description[kIOPSIsChargingKey] as? Bool) ?? false
+        let isCharged = (description[kIOPSIsChargedKey] as? Bool) ?? false
+        let powerState = description[kIOPSPowerSourceStateKey] as? String
+        return (min(max(level, 0), 100),
+                state(isCharging: isCharging, isCharged: isCharged, powerState: powerState),
+                isCharging)
+    }
+
+    static func state(isCharging: Bool, isCharged: Bool, powerState: String?) -> String {
+        if isCharging {
+            return "Charging"
+        } else if isCharged {
+            return "Full"
+        } else if powerState == kIOPSACPowerValue {
+            return "AC Power"
+        } else if powerState == kIOPSBatteryPowerValue {
+            return "Discharging"
         } else {
-            cachedHealth = 0
+            return "Unknown"
         }
+    }
+
+    /// Full-charge capacity as a percentage of design capacity, capped at 100; 0 when unknown.
+    static func health(currentCapacity: Int, designCapacity: Int) -> Int {
+        guard designCapacity > 0 && currentCapacity > 0 else { return 0 }
+        return min(Int((Double(currentCapacity) / Double(designCapacity) * 100).rounded()), 100)
     }
 
     private func intProperty(_ service: io_service_t, _ key: String) -> Int? {

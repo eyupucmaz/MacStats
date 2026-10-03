@@ -43,20 +43,33 @@ final class CPUMetrics {
 
         var ticks = [UInt32](repeating: 0, count: count)
         for i in 0..<count { ticks[i] = UInt32(bitPattern: info[i]) }
+        return update(ticks: ticks, coreCount: Int(cpuCount))
+    }
 
-        guard let previous = previousTicks, previous.count == count else {
+    /// Stores `ticks` as the new baseline and returns the load since the previous one.
+    /// Nil when there is no baseline yet or the core count changed.
+    func update(ticks: [UInt32], coreCount: Int) -> CPUSample? {
+        guard let previous = previousTicks, previous.count == ticks.count else {
             previousTicks = ticks
             return nil
         }
         previousTicks = ticks
+        return Self.usage(previous: previous, current: ticks, coreCount: coreCount)
+    }
+
+    /// Load between two per-core tick snapshots laid out as `coreCount` × `CPU_STATE_MAX`.
+    /// Nil when no ticks elapsed.
+    static func usage(previous: [UInt32], current: [UInt32], coreCount: Int) -> CPUSample? {
+        let states = Int(CPU_STATE_MAX)
+        guard coreCount > 0, previous.count >= coreCount * states, current.count >= coreCount * states else { return nil }
 
         var user: UInt64 = 0, system: UInt64 = 0, idle: UInt64 = 0, nice: UInt64 = 0
-        for core in 0..<Int(cpuCount) {
+        for core in 0..<coreCount {
             let base = core * states
-            user   += UInt64(ticks[base + Int(CPU_STATE_USER)]   &- previous[base + Int(CPU_STATE_USER)])
-            system += UInt64(ticks[base + Int(CPU_STATE_SYSTEM)] &- previous[base + Int(CPU_STATE_SYSTEM)])
-            idle   += UInt64(ticks[base + Int(CPU_STATE_IDLE)]   &- previous[base + Int(CPU_STATE_IDLE)])
-            nice   += UInt64(ticks[base + Int(CPU_STATE_NICE)]   &- previous[base + Int(CPU_STATE_NICE)])
+            user   += UInt64(current[base + Int(CPU_STATE_USER)]   &- previous[base + Int(CPU_STATE_USER)])
+            system += UInt64(current[base + Int(CPU_STATE_SYSTEM)] &- previous[base + Int(CPU_STATE_SYSTEM)])
+            idle   += UInt64(current[base + Int(CPU_STATE_IDLE)]   &- previous[base + Int(CPU_STATE_IDLE)])
+            nice   += UInt64(current[base + Int(CPU_STATE_NICE)]   &- previous[base + Int(CPU_STATE_NICE)])
         }
 
         let total = user + system + idle + nice
