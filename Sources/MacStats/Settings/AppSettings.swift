@@ -43,6 +43,7 @@ final class AppSettings: ObservableObject {
     static let intervalChoices: [Double] = [1.0, 2.0, 5.0, 30.0]
 
     private let defaults: UserDefaults
+    private let loginItem: LaunchAtLogin
     /// Guards the revert inside `applyLaunchAtLogin()` from re-entering `didSet`.
     private var isRevertingLaunchAtLogin = false
 
@@ -79,11 +80,12 @@ final class AppSettings: ObservableObject {
     @Published private(set) var launchAtLoginError: String?
 
     /// False when MacStats is not running from an `.app` bundle.
-    var isLaunchAtLoginSupported: Bool { LaunchAtLogin.isSupported }
-    var launchAtLoginStatusDescription: String { LaunchAtLogin.statusDescription }
+    var isLaunchAtLoginSupported: Bool { loginItem.isSupported }
+    var launchAtLoginStatusDescription: String { loginItem.statusDescription }
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = .standard, loginItem: LoginItemService = MainAppLoginItem()) {
         self.defaults = defaults
+        self.loginItem = LaunchAtLogin(service: loginItem)
         defaults.register(defaults: Self.defaultValues)
 
         showCPU = defaults.bool(forKey: Key.showCPU)
@@ -99,8 +101,8 @@ final class AppSettings: ObservableObject {
         let storedInterval = defaults.double(forKey: Key.updateInterval)
         updateInterval = Self.intervalChoices.contains(storedInterval) ? storedInterval : 1.0
         // Trust launchd, not the stored flag: the user can remove the login item elsewhere.
-        launchAtLogin = LaunchAtLogin.isSupported
-            ? LaunchAtLogin.isEnabled
+        launchAtLogin = self.loginItem.isSupported
+            ? self.loginItem.isEnabled
             : defaults.bool(forKey: Key.launchAtLogin)
     }
 
@@ -158,8 +160,8 @@ final class AppSettings: ObservableObject {
 
     /// Re-reads the live launchd state (cheap; called when Settings appears).
     func refreshLaunchAtLoginState() {
-        guard LaunchAtLogin.isSupported else { return }
-        let enabled = LaunchAtLogin.isEnabled
+        guard loginItem.isSupported else { return }
+        let enabled = loginItem.isEnabled
         guard enabled != launchAtLogin else { return }
         isRevertingLaunchAtLogin = true
         launchAtLogin = enabled
@@ -169,9 +171,9 @@ final class AppSettings: ObservableObject {
     private func applyLaunchAtLogin() {
         do {
             if launchAtLogin {
-                try LaunchAtLogin.register()
+                try loginItem.register()
             } else {
-                try LaunchAtLogin.unregister()
+                try loginItem.unregister()
             }
             launchAtLoginError = nil
             persist(launchAtLogin, Key.launchAtLogin)
@@ -179,7 +181,7 @@ final class AppSettings: ObservableObject {
             launchAtLoginError = error.localizedDescription
             // Snap the toggle back to reality instead of pretending the change stuck.
             isRevertingLaunchAtLogin = true
-            launchAtLogin = LaunchAtLogin.isEnabled
+            launchAtLogin = loginItem.isEnabled
             isRevertingLaunchAtLogin = false
             persist(launchAtLogin, Key.launchAtLogin)
         }
