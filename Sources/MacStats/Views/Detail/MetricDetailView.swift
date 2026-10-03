@@ -8,13 +8,13 @@ struct MetricDetailView: View {
     var body: some View {
         switch metric {
         case .cpu: CPUDetailPage()
-        case .gpu: DetailPlaceholderPage(metric: .gpu)
+        case .gpu: GPUDetailPage()
         case .ram: MemoryDetailPage()
         case .disk: DiskDetailPage()
         case .network: NetworkDetailPage()
-        case .battery: DetailPlaceholderPage(metric: .battery)
-        case .fan: DetailPlaceholderPage(metric: .fan)
-        case .temp: DetailPlaceholderPage(metric: .temp)
+        case .battery: BatteryDetailPage()
+        case .fan: FanDetailPage()
+        case .temp: TemperatureDetailPage()
         }
     }
 }

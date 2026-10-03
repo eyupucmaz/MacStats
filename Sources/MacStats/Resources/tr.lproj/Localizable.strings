@@ -552,3 +552,131 @@
 "gigabits" = "gigabit";
 "megabits" = "megabit";
 "kilobits" = "kilobit";
+
+/* MARK: GPU detail (#26) */
+
+/* GPU page section titles; "GPUs" heads the list on Macs with more than one GPU */
+"GPU Memory" = "GPU Belleği";
+"About This GPU" = "Bu GPU Hakkında";
+"GPUs" = "GPU'lar";
+/* GPU page chart lines: overall utilization (as on the card), the pixel pipeline and the geometry pipeline */
+"Overall" = "Genel";
+"Renderer" = "Oluşturucu";
+"Tiler" = "Döşeyici";
+"Renderer is the GPU's pixel work, tiler its geometry work." = "Oluşturucu GPU'nun piksel işini, döşeyici ise geometri işini gösterir.";
+/* GPU page, Macs with several GPUs: which GPU the renderer and tiler lines belong to */
+"Renderer and tiler: %@" = "Oluşturucu ve döşeyici: %@";
+/* GPU page: shown instead of the headline and chart when the driver reports no utilization */
+"macOS does not report GPU utilization for this Mac's graphics driver." = "macOS bu Mac'in grafik sürücüsü için GPU kullanımını bildirmiyor.";
+/* GPU page footnote */
+"Per-app GPU usage is not shown: macOS has no public API for it." = "Uygulama başına GPU kullanımı gösterilmez: macOS'te bunun için herkese açık bir API yok.";
+/* GPU memory rows: memory the driver has in use, has allocated, and dedicated video memory */
+"In use" = "Kullanımda";
+"Allocated" = "Ayrılmış";
+"Video memory" = "Video belleği";
+"Apple silicon has unified memory: the GPU uses the same RAM as the CPU, so this is part of the memory on the RAM page, not separate video memory." = "Apple silicon'da birleşik bellek vardır: GPU, CPU ile aynı RAM'i kullanır; bu yüzden bu bellek ayrı bir video belleği değil, RAM sayfasındaki belleğin bir parçasıdır.";
+/* About This GPU rows */
+"Model" = "Model";
+"GPU cores" = "GPU çekirdekleri";
+"Metal device" = "Metal aygıtı";
+
+/* MARK: Battery detail (#28) */
+/* Battery page headline: time left until the battery is full (charging) or empty (on battery), and the battery's power */
+"Until full" = "Dolmasına";
+"Remaining" = "Kalan süre";
+"Power" = "Güç";
+/* Battery page, VoiceOver: battery power, e.g. "12.3 watts into the battery" while charging */
+"%@ into the battery" = "Pile %@ giriyor";
+"%@ from the battery" = "Pilden %@ çekiliyor";
+/* Battery page: chart of battery power (voltage × current) and its note */
+"Battery power" = "Pil gücü";
+"Voltage × current at the battery. The power chart and the band are recorded while this page is open." = "Pildeki gerilim × akım. Güç grafiği ve şerit, bu sayfa açıkken kaydedilir.";
+/* Battery page: power adapter rows; "Power source" is also the band under the charge chart */
+"Power adapter" = "Güç adaptörü";
+"Power source" = "Güç kaynağı";
+"Status" = "Durum";
+"Connected" = "Bağlı";
+"Not connected" = "Bağlı değil";
+"Name" = "Ad";
+"Wattage" = "Güç değeri";
+/* Battery page: where a Mac without a battery draws power from */
+"AC power" = "Şebeke elektriği";
+"UPS" = "Kesintisiz güç kaynağı";
+/* Battery page: shown on Macs without a battery */
+"This Mac has no battery" = "Bu Mac'te pil yok";
+"Its power source is shown below." = "Güç kaynağı aşağıda gösteriliyor.";
+/* Battery page: battery health rows */
+"Battery health" = "Pil sağlığı";
+"Condition" = "Durum";
+"Service recommended" = "Servis önerilir";
+"Health" = "Sağlık";
+"Maximum capacity" = "Maksimum kapasite";
+"Design capacity" = "Tasarım kapasitesi";
+"Cycle count" = "Döngü sayısı";
+/* Cycle count against the cycles the battery is designed for, e.g. "49 of 1000" */
+"%@ of %@" = "%@ / %@";
+"Voltage" = "Gerilim";
+"Health is maximum over design capacity. System Settings shows a smoothed figure that can differ by a few points." = "Sağlık, maksimum kapasitenin tasarım kapasitesine oranıdır. Sistem Ayarları birkaç puan farklı olabilen yumuşatılmış bir değer gösterir.";
+/* Battery capacity in milliampere-hours, e.g. "5739 mAh", and its VoiceOver form */
+"%@ mAh" = "%@ mAh";
+"%@ milliampere-hours" = "%@ miliamper saat";
+/* Battery voltage, e.g. "13.02 V", and its VoiceOver form */
+"%@ V" = "%@ V";
+"%@ volts" = "%@ volt";
+/* Battery page: power modes */
+"Modes" = "Modlar";
+"Low Power Mode" = "Düşük Güç Modu";
+
+/* MARK: Fan detail (#31) */
+
+/* Fan page: section listing every fan */
+"Fans" = "Fanlar";
+/* Fan page: shown on Macs without a fan */
+"No fan" = "Fan yok";
+"This Mac is cooled passively." = "Bu Mac pasif olarak soğutuluyor.";
+/* Fan page: shown when the SMC reports no fan speeds at all */
+"macOS did not report fan speeds." = "macOS fan hızlarını bildirmedi.";
+/* Fan page: how many fans the Mac has */
+"Number of fans" = "Fan sayısı";
+/* Fan page: one of several fans, numbered from 1, e.g. "Fan 2" */
+"Fan %@" = "Fan %@";
+/* Fan page: speed limits and the speed the system is steering a fan towards */
+"Minimum" = "En düşük";
+"Maximum" = "En yüksek";
+"Target" = "Hedef";
+/* Fan page: VoiceOver label of the gauge of a fan's speed against its maximum */
+"Speed" = "Hız";
+/* Fan page: under the gauge; the argument is a percentage such as "40%" */
+"%@ of max" = "en yüksek hızın %@ kadarı";
+/* Fan page, VoiceOver: the gauge, e.g. "40 percent of maximum speed" */
+"%@ percent of maximum speed" = "en yüksek hızın yüzde %@ kadarı";
+/* Fan page: caption under the chart on Macs with two fans */
+"Fan 2 is recorded while this page is open." = "Fan 2, bu sayfa açıkken kaydedilir.";
+
+/* MARK: Temperature detail (#32) */
+
+/* Temperature page: chart and section title, the card's CPU temperature over time */
+"CPU temperature" = "CPU sıcaklığı";
+/* Caption under the temperature chart */
+"The band is the thermal state macOS reports, recorded while this page is open." = "Şerit, macOS'un bildirdiği ısıl durumdur ve bu sayfa açıkken kaydedilir.";
+/* Temperature page: section listing every temperature sensor */
+"Sensors" = "Sensörler";
+/* Temperature sensor groups (Performance cores, Efficiency cores, GPU and Battery reuse earlier keys) */
+"SoC / other" = "SoC / diğer";
+"Storage" = "Depolama";
+/* Temperature page: one sensor of a group, numbered from 1, e.g. "Sensor 3" */
+"Sensor %@" = "Sensör %@";
+/* Temperature page, VoiceOver: a sensor group: its hottest reading now, then the lowest and highest reading of any of its sensors this session */
+"%@, hottest %@, lowest %@, highest %@" = "%@, en sıcak %@, en düşük %@, en yüksek %@";
+/* Temperature page, VoiceOver: a sensor, its reading now, and its lowest and highest reading this session */
+"%@, %@, lowest %@, highest %@" = "%@, %@, en düşük %@, en yüksek %@";
+/* Temperature page, VoiceOver: state of a sensor group that can be opened and closed */
+"Expanded" = "Açık";
+"Collapsed" = "Kapalı";
+/* Temperature page: shown on Macs whose chip has no sensor list yet; only the card's sensor is listed */
+"Detailed sensors aren't mapped for this Mac yet." = "Bu Mac için ayrıntılı sensörler henüz eşlenmedi.";
+/* Temperature page: shown when no sensor reads at all */
+"macOS did not report any temperature sensors." = "macOS hiçbir sıcaklık sensörü bildirmedi.";
+/* Temperature page: captions under the sensor list */
+"Groups show their hottest sensor now and the range of all their sensors. Min and max are the lowest and highest readings since MacStats started, while this page was open." = "Gruplar şu an en sıcak sensörlerini ve tüm sensörlerinin aralığını gösterir. En az ve en çok, MacStats başladığından beri bu sayfa açıkken alınan en düşük ve en yüksek ölçümlerdir.";
+"Min and max are the lowest and highest readings since MacStats started, while this page was open." = "En az ve en çok, MacStats başladığından beri bu sayfa açıkken alınan en düşük ve en yüksek ölçümlerdir.";
