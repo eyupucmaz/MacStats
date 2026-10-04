@@ -46,6 +46,32 @@ metrics and an **Audio** tab with optional controls:
   select **Enable App Mixer**, and stays active only while enabled. The first
   time you enable it, macOS asks for system audio-capture permission.
 
+## Details
+
+Coming in the next release and available on `main`. Click any card in the
+System tab to open its detail page in the same popover: live charts over the
+last minute, 5 minutes, 15 minutes or hour (hover for exact values; min, avg
+and max for the visible range), a breakdown of the number on the card, and the context
+behind it, such as the busiest processes. There is a page for CPU, GPU, memory,
+disk, network, battery, fan and temperature.
+
+<p>
+  <img src="docs/assets/details/detail-cpu.png" width="300" alt="MacStats CPU detail page with a usage chart and per-core load">
+  <img src="docs/assets/details/detail-temp.png" width="300" alt="MacStats Temperature detail page with a temperature chart and grouped sensors">
+</p>
+
+- Go back with the chevron, Esc or ⌘[. Closing the popover returns to the cards.
+- Right-click MacStats in the menu bar (or select ⋯ in the popover) and choose
+  **Details** to open any page directly. With a single metric in the menu bar,
+  **Settings → Details** can make a click open that metric's page.
+- History is kept in memory for the last hour only; nothing is written to disk.
+  The pages make no network requests. Per-process GPU and network usage and the
+  public IP address are not shown by design, and the Wi-Fi network name needs
+  Location access, which MacStats never requests.
+
+See the [user guide](https://eyupucmaz.github.io/MacStats/guide.html#details) for
+what each page shows.
+
 ## Languages
 
 Coming in v0.2.0 and available on `main`. MacStats is available in English and

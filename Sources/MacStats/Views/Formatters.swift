@@ -43,12 +43,15 @@ enum MetricFormat {
     }
 
     /// Scales a byte count into binary units labelled KB/MB/GB, the convention the
-    /// RAM card and Activity Monitor use for memory. Same rounding as `decimalBytes`.
-    static func binaryBytes(_ bytes: Double, locale: Locale) -> (number: String, unit: ByteUnit) {
+    /// RAM card and Activity Monitor use for memory. `precise` keeps one decimal
+    /// below 100 like the RAM card ("12.4 GB"); axis labels pass false for
+    /// `decimalBytes`' shorter rounding ("10 GB").
+    static func binaryBytes(_ bytes: Double, locale: Locale, precise: Bool = true) -> (number: String, unit: ByteUnit) {
         let bytes = bytes.isFinite ? max(bytes, 0) : 0
+        let wholeFrom = precise ? 99.95 : 9.95
         for (index, unit) in ByteUnit.allCases.enumerated() {
             let value = bytes / pow(1_024, Double(index))
-            let digits = unit == .byte || value >= 9.95 ? 0 : 1
+            let digits = unit == .byte || value >= wholeFrom ? 0 : 1
             let step = digits == 0 ? 1.0 : 10.0
             let rounded = (value * step).rounded() / step
             if rounded < 1000 || unit == ByteUnit.allCases.last {
@@ -195,7 +198,10 @@ enum MetricValueFormat {
         switch unit {
         case .percent:
             return MetricFormat.percent(value, digits: 0, locale: locale)
-        case .bytes, .memory, .bytesPerSecond, .rpm:
+        case .memory:
+            let scaled = MetricFormat.binaryBytes(value, locale: locale, precise: false)
+            return "\(scaled.number) \(scaled.unit.symbol)"
+        case .bytes, .bytesPerSecond, .rpm:
             return short(value, unit: unit, locale: locale)
         case .celsius:
             return MetricFormat.decimal(value, digits: digits, locale: locale) + "°C"
