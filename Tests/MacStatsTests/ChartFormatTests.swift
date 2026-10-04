@@ -157,6 +157,8 @@ final class ChartFormatTests: XCTestCase {
     func testMemoryUsesBinaryUnitsLikeTheRAMCard() {
         // 8.2 GiB reads "8.2 GB" here and on the card, not the decimal "8.8 GB".
         XCTAssertEqual(MetricValueFormat.short(8_804_682_138, unit: .memory, locale: english), "8.2 GB")
+        // One decimal up to 100 GB, like the card's "12.4/16 GB" (was "12 GB" next to it).
+        XCTAssertEqual(MetricValueFormat.short(13_314_398_618, unit: .memory, locale: english), "12.4 GB")
         XCTAssertEqual(MetricValueFormat.short(8_804_682_138, unit: .bytes, locale: english), "8.8 GB")
         XCTAssertEqual(MetricValueFormat.short(512 * 1_048_576, unit: .memory, locale: english), "512 MB")
     }
