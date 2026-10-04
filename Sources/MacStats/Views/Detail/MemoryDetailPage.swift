@@ -190,7 +190,7 @@ private struct MemoryHistorySections: View {
                         labels: [MetricSeriesID.memoryUsed: L10n.string("Used")],
                         style: .area, range: range, end: now, height: 110)
             SeriesStatsRow(statistics: history.statistics(MetricSeriesID.memoryUsed, range: range, now: now),
-                           unit: .bytes)
+                           unit: .memory)
         }
         DetailSection(L10n.string("Memory pressure")) {
             MetricChart(title: L10n.string("Memory pressure"),
