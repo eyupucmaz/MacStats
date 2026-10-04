@@ -31,6 +31,19 @@ audio processing local: never record, store, or send captured audio.
 Keep commits focused. Open an issue before proposing a broad behavioral change
 so maintainers and contributors can agree on scope first.
 
+## Documentation screenshots
+
+The popover images in `docs/assets` come from a gated test that hosts the real
+popover, records about five and a half minutes of genuine readings, then
+captures the card grid and each detail page by window ID (never the whole
+screen): `MACSTATS_SCREENSHOTS=1 MACSTATS_SCREENSHOTS_DIR=/tmp/shots swift test
+--filter DocScreenshotTests`. The popover appears on screen while it runs; the
+other `MACSTATS_SCREENSHOTS_*` options (warm-up, pages, appearance, per-page
+height caps) are documented in `Tests/MacStatsTests/DocScreenshotTests.swift`.
+Before committing an image, check it for personal data: IP or MAC addresses,
+network, computer or user names, volume names other than Macintosh HD, and
+process names other than well-known apps.
+
 ## Releases
 
 Releases are cut by pushing a `vMAJOR.MINOR.PATCH` tag that matches
