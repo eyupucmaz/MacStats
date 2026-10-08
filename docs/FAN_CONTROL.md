@@ -1,8 +1,8 @@
 # Future Fan-Control Feasibility
 
-## Status in v0.1.0
+## Status in v0.2.0
 
-MacStats v0.1.0 is monitoring-only. It can read fan RPM and temperature when
+MacStats v0.2.0 is monitoring-only. It can read fan RPM and temperature when
 the hardware exposes those values, but it does not set fan mode or RPM.
 
 Fan control is safety-sensitive. A partial write, race, crash, or `SIGKILL`

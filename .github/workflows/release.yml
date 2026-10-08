@@ -174,7 +174,11 @@ jobs:
           body: |
             MacStats ${{ env.RELEASE_TAG }} Public Preview monitors your Mac from the menu bar: CPU, GPU, memory, disk, network, battery, and, where the hardware exposes them, fan speeds and temperatures. It only reads the SMC: there are no SMC or fan writes, and MacStats does not control fans.
 
-            Optional audio controls let you choose the default output and input devices and adjust output volume and mute. The per-app mixer (App Mixer) requires macOS 14.2 or later and asks for audio-capture permission when you enable it; audio is processed locally.
+            Click any card to open its detail page in the popover, with live charts over the last hour and the context behind each number. History stays in memory and is never written to disk.
+
+            Optional audio controls let you choose the default output and input devices and adjust output volume and mute. The per-app mixer (App Mixer) requires macOS 14.2 or later and asks for audio-capture permission when you enable it; audio is processed locally. Because the build is ad-hoc signed, macOS asks for that permission again after each update.
+
+            MacStats is available in English and Turkish and follows your macOS language. See CHANGELOG.md for the full list of changes.
 
             This build is ad-hoc signed and is not notarized. Open the DMG and drag `MacStats.app` to Applications. On first launch, use Control-click → Open, or choose Open Anyway in System Settings → Privacy & Security.
 
