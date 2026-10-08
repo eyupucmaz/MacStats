@@ -1,25 +1,25 @@
 # MacStats
 
-[Website](https://eyupucmaz.github.io/MacStats/) · [Wiki & user guide](https://eyupucmaz.github.io/MacStats/guide.html) · [Download](https://github.com/eyupucmaz/MacStats/releases/tag/v0.1.0)
+[Website](https://eyupucmaz.github.io/MacStats/) · [Wiki & user guide](https://eyupucmaz.github.io/MacStats/guide.html) · [Download](https://github.com/eyupucmaz/MacStats/releases/tag/v0.2.0)
 
 MacStats is a lightweight macOS menu bar app that monitors your Mac. It never
-writes fan or SMC settings. The v0.1.0 public preview requires macOS 13
+writes fan or SMC settings. The v0.2.0 public preview requires macOS 13
 (Ventura) or later.
 
 It reports CPU, memory, GPU, disk capacity, network, and battery metrics. When
 the hardware exposes them, it also reports fan RPM and temperature. Fan speed
 is a reading only: MacStats does not include fan control.
 
-The development version on `main` (coming in v0.2.0) also adds optional audio
-controls in a new Audio tab; see [Audio controls](#audio-controls). The v0.1.0
-download does not include them.
+It also offers optional audio controls in an Audio tab (see
+[Audio controls](#audio-controls)) and a detail page for every metric (see
+[Details](#details)).
 
 ## Download and install
 
-Download the v0.1.0 public preview from
-[GitHub Releases](https://github.com/eyupucmaz/MacStats/releases/tag/v0.1.0). The
-v0.1.0 release assets are `MacStats-0.1.0-universal.dmg` and
-`MacStats-0.1.0-universal.dmg.sha256`.
+Download the v0.2.0 public preview from
+[GitHub Releases](https://github.com/eyupucmaz/MacStats/releases/tag/v0.2.0). The
+v0.2.0 release assets are `MacStats-0.2.0-universal.dmg` and
+`MacStats-0.2.0-universal.dmg.sha256`.
 
 1. Open the DMG and drag `MacStats.app` to Applications.
 2. Because this preview is ad-hoc signed and not notarized, open it with
@@ -31,12 +31,12 @@ Verify the downloaded DMG before opening it:
 
 ```bash
 cd ~/Downloads
-shasum -a 256 -c MacStats-0.1.0-universal.dmg.sha256
+shasum -a 256 -c MacStats-0.2.0-universal.dmg.sha256
 ```
 
 ## Audio controls
 
-Coming in v0.2.0 and available on `main`. The popover has a **System** tab for
+The popover has a **System** tab for
 metrics and an **Audio** tab with optional controls:
 
 - **Devices:** choose the default output and input device, and set the output
@@ -48,11 +48,10 @@ metrics and an **Audio** tab with optional controls:
 
 ## Details
 
-Coming in the next release and available on `main`. Click any card in the
-System tab to open its detail page in the same popover: live charts over the
-last minute, 5 minutes, 15 minutes or hour (hover for exact values; min, avg
-and max for the visible range), a breakdown of the number on the card, and the context
-behind it, such as the busiest processes. There is a page for CPU, GPU, memory,
+Click any card in the System tab to open its detail page in the same popover:
+live charts over the last minute, 5 minutes, 15 minutes or hour (hover for
+exact values; min, avg and max for the visible range), a breakdown of the
+number on the card, and the context behind it, such as the busiest processes. There is a page for CPU, GPU, memory,
 disk, network, battery, fan and temperature.
 
 <p>
@@ -74,8 +73,7 @@ what each page shows.
 
 ## Languages
 
-Coming in v0.2.0 and available on `main`. MacStats is available in English and
-Turkish and follows your macOS language. To change it for MacStats only, use
+MacStats is available in English and Turkish and follows your macOS language. To change it for MacStats only, use
 System Settings → General → Language & Region → Applications. The three-letter
 menu bar labels (`CPU`, `RAM`, `DSK`, `NET`, …) and unit symbols stay the same
 in every language to keep the menu bar compact.
@@ -89,7 +87,7 @@ permission prompts); `swift test` checks that every language has every string.
 MacStats reads local system metrics. It has no accounts, no telemetry, and no
 network data upload by the app. Preferences are saved locally on your Mac.
 
-Audio capture (v0.2.0 / `main`): the App Mixer needs system audio-capture
+Audio capture: the App Mixer needs system audio-capture
 permission so it can adjust each app's volume. Audio is processed live on your
 Mac only while the mixer is enabled; it is never recorded, stored, or sent
 anywhere. You can revoke the permission at any time in System Settings →
@@ -103,7 +101,8 @@ Privacy & Security → Screen & System Audio Recording.
 - The per-app App Mixer requires macOS 14.2 or later; on earlier versions the
   Audio tab offers device selection and output volume only.
 - The public preview uses an ad-hoc signature. An ad-hoc signature is not
-  notarization.
+  notarization. Because each update has a new ad-hoc signature, macOS asks for
+  the App Mixer's audio-capture permission again after you update.
 - CI verifies the packaged app as Universal 2 (`arm64` and `x86_64`); this is
   build verification, not a claim that every metric is available on every Mac.
 
@@ -118,12 +117,12 @@ swift test
 bash Scripts/check-monitoring-only.sh
 for script in Scripts/*.sh; do bash -n "$script"; done
 
-APP_VERSION=0.1.0 BUILD_NUMBER=1 RELEASE_STRICT=1 bash Scripts/build-app.sh
-bash Scripts/package-dmg.sh 0.1.0
-bash Scripts/verify-release.sh 0.1.0 1
+APP_VERSION=0.2.0 BUILD_NUMBER=1 RELEASE_STRICT=1 bash Scripts/build-app.sh
+bash Scripts/package-dmg.sh 0.2.0
+bash Scripts/verify-release.sh 0.2.0 1
 ```
 
-The package command produces `dist/MacStats-0.1.0-universal.dmg` and its
+The package command produces `dist/MacStats-0.2.0-universal.dmg` and its
 `.sha256` checksum file.
 
 ## Contributing and roadmap

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-08
+
 ### Added
 
 - Audio tab in the popover: choose the default output and input device and set
@@ -57,6 +59,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   updates once per refresh, and core bars and fan gauges animate with Core
   Animation. An open detail page now costs about what the card grid does.
 
+### Known issues
+
+- The build is still ad-hoc signed, so macOS asks for the App Mixer's
+  audio-capture permission again after each update.
+
 ## [0.1.0] - 2026-09-04
 
 ### Added
@@ -64,5 +71,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Read-only macOS system monitoring in a menu bar app.
 - Universal 2 DMG packaging and automated verification.
 
-[Unreleased]: https://github.com/eyupucmaz/MacStats/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/eyupucmaz/MacStats/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/eyupucmaz/MacStats/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/eyupucmaz/MacStats/releases/tag/v0.1.0
